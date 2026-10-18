@@ -20,7 +20,7 @@
 3. **退出码**：`0` = 操作完成——**但结果可能含 partial / warning / unknown**，要另看 `coverage.status` 与 `limitations`；`1` = 没能完成；`128+N` = 被信号 N 结束。
 4. **两个输出选项的硬约束**（【实测】）：
    - `--token-limit` / `--token-offset` **不能**与 `--format json|jsonl|yaml` 同用，会报 `UNSUPPORTED_OUTPUT_COMBINATION`。要缩小结果用 `--filter-output evidence_id,normalized_result.statistics`。
-   - `--filter-output` 语法是逗号分隔的字段路径（`a,b.c,d[0,3]`），**写错不会报错，静默返回 `{}`**；引用不存在的字段会保留外层结构、填空对象。
+   - `--filter-output` 语法是逗号分隔的字段路径（`a,b.c,d[0,3]`）。写错时**多数情况不报错、静默返回 `{}`**（字段名写错、引用不存在的路径）；**唯一例外**是未闭合的 `[` 切片，会报 `INVALID_OUTPUT_FILTER`。引用不存在的字段会保留外层结构、填空对象。
 
 **平台图例**：可用 / 受限 / 不可用 / 文档未明确。
 
@@ -47,7 +47,7 @@
 **一句话**：不运行目标，把 ASAR 或解压目录重建为一张带证据的"应用图谱"——模块、import/require 关系、路由与端点候选、preload/contextBridge 暴露面，以及 **renderer invoke ↔ main handle 按通道名精确配对**的 IPC 链路（两端都带源码行列号），外加 `.node` 原生插件的交接点。
 
 **前置**：**零依赖**（只要 Node.js + npm）。Windows / macOS / Linux 均可用；Linux 上 REA 的进程监督需要 PATH 上有 procps 兼容的 `ps`。它不是 native 引擎，不需要 Hopper/Ghidra/IDA。
-Windows 上 analyzer 内存由 Job Object 限制为 `max_heap_mb` + 512 MiB（默认 1536 MiB）。
+**在 Bun 上运行时**（仅 Windows），analyzer 的 Job Object 把提交内存限制为 `max_heap_mb` + 512 MiB（默认 1536 MiB）；**Node 下无此进程级限制**，`--max-heap-mb` 的 V8 old-space 预算才是边界。
 
 **命令**：
 
@@ -96,19 +96,21 @@ rea trace-application-feature trace-input.json --format json
 
 **返回什么**（【实测】OpenCode evidence 的顶层字段）：`evidence_id`、`subject`（路径、SHA-256、`format: "asar"`）、`provider.id: "rea-javascript-application"`、`normalized_result` 下：
 
-- `graph`（`JavaScriptApplicationGraph`：`nodes[]` / `edges[]`，节点带 `kind`、观测属性、`evidence.authority` 与源码位置）；
-- `semantic_graph`（语义关系图）；
+- `graph`（`JavaScriptApplicationGraph`：`nodes[]` / `edges[]`，节点带 `kind`、观测属性、`evidence.authority` 与源码位置；**`coverage` 嵌在这里**——`graph.coverage.status`）；
+- `semantic_graph`（语义关系图，自带 `coverage`；节点数有上限，触顶时 `truncated: true`）；
 - `statistics`：`relevant_files`、`parsed_javascript_files`、`visited_ast_nodes`、`findings`、`text_bytes_read`、`parse_failures` 等；
 - `summary`：Electron 表面计数（`browser_windows`、`explicit_web_preferences`、`context_bridge_apis`、`exposed_api_members`、`ipc.operations / literal_channels / main_handlers / paired_renderer_transmissions / ambiguous_renderer_transmissions` 等）；
-- `integrity_contradictions`、`limitations`、`coverage`。
+- `integrity_contradictions`、`limitations`。
 
-**实际例子**（【实测】）：OpenCode 桌面版 146 MB 的 `app.asar` 完整跑通（应用图谱层；semantic 层达 100,000 节点上限后截断，`status: partial`）——evidence 354 MB；图谱 **27,278 节点 / 32,977 边 / 7,823 条终端路径**；`statistics` 里 asar 相关文件 6,702、解析 JS 4,489、AST 节点 4,751,494、findings 30,648；`summary.ipc` 163 个操作 / 76 个字面量通道 / 81 个主进程 handler / 55 对配对。追踪 `kill-sidecar` 得到 renderer `out/preload/index.js:11`（invoke）↔ main `out/main/index.js:2069`（handle），并给出 5 个原生交接点（`@parcel/watcher`、`node-pty`、`msgpackr-extract` 等）。反例：ChatGPT 桌面版 567 MB ASAR 只分析到 3,757/16,197 个源文件就因"父进程结果容量耗尽"而 `coverage.status = "partial"`。
+（注意：`normalized_result` 顶层**没有** `coverage`——它总在 `graph` / `semantic_graph` 里。）
+
+**实际例子**（【实测】）：OpenCode 桌面版 146 MB 的 `app.asar` 完整跑通（应用图谱层；semantic 层达 100,000 节点上限后截断，`status: partial`）——evidence 354 MB；图谱 **27,278 节点 / 32,977 边 / 7,823 条终端路径**；`statistics` 里 asar 相关文件 6,702、解析 JS 4,489、AST 节点 4,751,494、findings 30,648；`summary.ipc` 163 个操作 / 76 个字面量通道 / 81 个主进程 handler / 55 对配对。追踪 `kill-sidecar` 得到 renderer `out/preload/index.js:11`（invoke）↔ main `out/main/index.js:2069`（handle），并给出 5 个原生交接点（`@parcel/watcher`、`node-pty`、`msgpackr-extract` 等）。反例：ChatGPT 桌面版 567 MB ASAR 只分析到 3,757/16,197 个源文件就因"父进程结果容量耗尽"而 `normalized_result.graph.coverage.status = "partial"`。
 
 **注意事项**：
 
 - **`--integrity-policy` 的坑是常态，不是异常**。遇到 `artifact_integrity_mismatch` 先看错误指认的路径；打包器二次签名/剥离原生二进制是常见原因，加 `record-and-continue` 重跑即可。矛盾会保留在结果里，不要当它不存在。
 - **大目标先投影再读**。几万节点 + 几百 MB evidence 直接进上下文不现实：`--filter-output`（跑的时候缩）→ jq summary view（存下来后缩）→ module page（按需翻）。官方数据：334 MB Obsidian evidence 的 summary view 约 10 KB。
-- **Node 有 512 MiB 字符串硬墙**（【我们的发现】）。`ERR_STRING_TOO_LONG`（`0x1fffffe8` 字节）发生在 `readFileSync(evidence.json, 'utf8')`；570 MB 的 evidence 用 node 读必崩，用 `jq -c` 流式投影可行（但可能 >120 秒）。**投影用 jq，不要用 node -e**。
+- **Node 有 512 MiB 字符串硬墙**（【我们的发现】）。`ERR_STRING_TOO_LONG`（`0x1fffffe8` 字节）发生在 `readFileSync(evidence.json, 'utf8')`；570 MB 的 evidence 用 node 读必崩，用 `jq -c` 流式投影可行（视磁盘与目标大小可能到分钟级；且输出 `view.json` 与 evidence 同等大小，先留好空间）。**投影用 jq，不要用 node -e**。
 - **功能追踪的 seed kind 用 `string`**（【实测】+ 源码核实）。官方文档把 "IPC channel" 列为合法 seed kind，但 `channel` 只匹配 `node.kind === "ipc-channel"` 的节点身份，而通道名实际住在 `observations[].properties.static_analysis.electron.ipc[].channel` 里——实测 `channel` 对 `kill-sidecar` 返回 no-match，`string` 命中 2 个种子。
 - **父进程结果容量**：大目标可能中途停止并返回 partial。官方推荐的调节是 `--max-heap-mb` / `--analysis-timeout-ms`（官方正路，我们当时未验证；我们只试过 `NODE_OPTIONS`，无效——worker 环境里 `NODE_OPTIONS` 被 `delete`）。更稳的办法是 `--source-path` 分层喂子集。
 - **原生插件是静态分析的尽头**：`.node` 只记录"JS 请求了它"，不解析插件内部。要对交接点继续，用 §9 的原生引擎。
@@ -145,8 +147,14 @@ rea compare-managed-members "<旧版本>.exe" "<新版本>.exe" --format json
 
 ```powershell
 # Windows PowerShell：不用加载执行，只读反射（实测用于 PCL2）
-[System.Reflection.Assembly]::ReflectionOnlyLoadFrom("<你的程序>.exe").GetTypes() |
-  ForEach-Object { $_.FullName }
+# ⚠️ 对依赖复杂的程序集，直接 .GetTypes() 会抛 ReflectionTypeLoadException——
+#    必须在 catch 里取已加载的部分类型，否则拿不到清单：
+try {
+  [System.Reflection.Assembly]::ReflectionOnlyLoadFrom("<你的程序>.exe").GetTypes() |
+    ForEach-Object { $_.FullName }
+} catch [System.Reflection.ReflectionTypeLoadException] {
+  $_.Exception.Types | Where-Object { $_ } | ForEach-Object { $_.FullName }
+}
 ```
 
 ```bash
@@ -165,7 +173,7 @@ ilspycmd -p -o "<输出目录>" "<你的程序>.exe"
 
 **返回什么**（【实测】PCL2 `--type PCL.ModBase` 输出结构）：`artifact`（path/sha256/byte_length/format）、`module`、`metadata`（status、table_row_counts）、`identity_scope`（`token_identity: "build-local"`，跨构建匹配需要 artifact SHA-256 + MVID）、`types[]`（token、namespace、name、full_name、extends_token、field_list、method_list）、`fields[]`、`methods[]`（token、declaring_type、name、signature、`body`）、`member_refs[]`、`call_edges[]`、`field_accesses[]`、`user_strings`（`state`、`literals`、`issues`——`ldstr` 的 0x70 token 与解码值）、`selection`（`type_names`、`unmatched_type_names`）、`coverage`（state/issues）、`limitations`。
 
-**实际例子**（【实测】）：PCL2 v2.13.1.1（5.5 MB，WPF + VB.NET）——`inspect-managed-artifact` 得到 643 个类型 / 6,116 方法 / 3,503 字段 / 23 个程序集引用；`inspect-managed-members --type PCL.ModBase` 单独取出 **47 个方法、26 个字段**，`coverage.state: "complete"`、`selection.type_names: ["PCL.ModBase"]`。另一个实测样本 `System.dll`：2,365 个 TypeDef / 18,170 个 MethodDef。`inspect-managed-native-boundaries` 显示 PCL2 只声明了 8 个系统 DLL 的 P/Invoke（没有 winhttp/wininet/ws2_32）→ 网络全走 .NET 托管栈，可据此判断"纯托管应用"。
+**实际例子**（【实测】）：PCL2 v2.13.1.1（5.5 MB，WPF + VB.NET）——`inspect-managed-artifact` 得到 643 个类型 / 6,116 方法 / 3,503 字段 / 23 个程序集引用；`inspect-managed-members --type PCL.ModBase` 单独取出 **47 个方法、26 个字段**，`coverage.state: "complete"`、`selection.type_names: ["PCL.ModBase"]`。另一个实测样本 `System.dll`：2,365 个 TypeDef / 18,170 个 MethodDef。`inspect-managed-native-boundaries` 显示 PCL2 只有 8 条模块引用（其中 `user32.dll`/`User32` 是大小写重复；去重 6 个 DLL，没有 winhttp/wininet/ws2_32）→ 网络全走 .NET 托管栈，可据此判断"纯托管应用"。
 
 **注意事项**：
 
@@ -248,7 +256,7 @@ rea inspect-pe-resources "<你的程序>.exe" --format json
 rea inspect-pe-resources "C:/Windows/System32/notepad.exe" --format json
 ```
 
-**返回什么**（【实测】notepad.exe 输出结构）：`format`（`pe32` / `pe32-plus`）、`machine`（34404 = x64）、`directory`（资源目录的 RVA 与文件位置）、`directories[]`、`resources[]`（`index`、`type`/`name`/`language` 各自是 `{kind: "numeric"|"name", utf16le_hex, location}`——数字 ID 与 UTF-16 名称严格区分且保留原始字节、`entry_locations`、`data_entry_location`、`code_page`、`reserved`、`payload`（偏移/长度/SHA-256））、`icon_groups`、`coverage`、`limitations`。
+**返回什么**（【实测】notepad.exe 输出结构）：`format`（`pe32` / `pe32-plus`）、`machine`（34404 = x64）、`directory`（资源目录的 RVA 与文件位置）、`directories[]`、`resources[]`（`index`、`type`/`name`/`language` 各自是 `{kind: "id"|"name", utf16le_hex, location}`——数字 ID 与 UTF-16 名称严格区分且保留原始字节、`entry_locations`、`data_entry_location`、`code_page`、`reserved`、`payload`（偏移/长度/SHA-256））、`icon_groups`、`coverage`、`limitations`。
 
 **实际例子**（【实测】）：`notepad.exe`（Win10 19045，200,704 字节）→ `pe32-plus`、machine 34404、5 个资源，其中包括名称型条目 `EDPENLIGHTENEDAPPINFO`（同时给出 `utf16le_hex` 原始字节）。这是"看某个 PE 里有没有清单/图标/版本信息"最快的入口。
 
@@ -355,7 +363,7 @@ rea capture-web-screenshot http://127.0.0.1:9222 <TARGET_ID> --format json
 
 **一句话**：读一个本地 SQLite 快照的 schema（表、索引、视图、触发器；可选全量声明）并抽样普通表的行——不需要单独安装 SQLite。
 
-**前置**：**Node.js 有更严的独立门槛**：`24.x >= 24.15` 或 `26+`，因为需要原生 `DatabaseSync.limits` API。REA 整体要求（`^22.19 || ^24.11 || >=26`）在这里**不够**——`24.11 ~ 24.14` 是"满足整体、不满足 SQLite"的交叉陷阱：`rea capabilities` 会报 `available: false`、`availability_code: "unsupported_version"`，但 inventory 命令本身仍成功。
+**前置**：**Node.js 有更严的独立门槛**：`24.x >= 24.15` 或 `26+`，因为需要原生 `DatabaseSync.limits` API。REA 整体要求（`^22.19 || ^24.11 || >=26`）在这里**不够**——`24.11 ~ 24.14` 是"满足整体、不满足 SQLite"的交叉陷阱：`rea capabilities` 会报 `available: false`、`availability_code: "unsupported_version"`（这条命令本身仍正常返回——这正是你确认门槛的方式），而 `inspect-sqlite-database` 的**任何调用都会以 `capability_unavailable` 失败**——包括默认的 schema inventory。
 
 **命令**：
 

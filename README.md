@@ -72,7 +72,7 @@ rea analyze-javascript-application /path/to/app.asar --json    # 静态分析 El
 ## 手册里几个最有价值的发现
 
 - **SQLite 的 Node 版本有独立的更严门槛。** 整体要求 24.11+，SQLite 却要求 **24.15+**（需要原生 `DatabaseSync.limits`）。24.11–24.14 是"满足整体、不满足 SQLite"的陷阱区间——SQLite 能力会报 `available: false`（`unsupported_version`），不细看结果就会漏掉。
-- **`--filter-output` 写错会静默返回 `{}`。** 语法错（比如未闭合的 `]`）不报错、不警告，直接给一个空对象。
+- **`--filter-output` 写错多数静默返回空**（字段名笔误、路径不存在），但未闭合的 `[` 切片例外——会报 `INVALID_OUTPUT_FILTER`（未闭合的 `]` 仍静默）。
 - **`trace-application-feature` 的官方文档给了一个实测不可用的 seed kind。** 文档把 `channel` 列为合法取值，但按源码逻辑它只匹配节点身份而非通道名，实测返回 no-match；改用 `string` 即可命中。
 - **大 evidence 有 512 MiB 的 Node 硬墙。** V8 单个字符串长度上限约 512 MiB，超限即 `ERR_STRING_TOO_LONG`。几百 MB 的 evidence 投影要用 `jq` 流式处理，`node readFileSync` 路线会直接崩。
 - **`rea capabilities` 不是完整能力清单。** 它只报告需要 provider（Ghidra 等）的操作；零依赖能力不在输出里——没列不等于不能用。
