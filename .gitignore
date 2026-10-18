@@ -1,0 +1,28 @@
+# 依赖（本仓库的脚本零依赖，但以防有人加）
+node_modules/
+package-lock.json
+
+# 分析产物（大文件不要进仓库）
+*.evidence.json
+evidence.json
+trace-input.json
+view.json
+*.asar
+*.asar.unpacked/
+
+# 系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 编辑器
+.vscode/
+.idea/
+*.swp
+*~
+
+# 临时文件
+*.tmp
+*.log
+.cache/
+_publish-checklist.md
