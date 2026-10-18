@@ -93,7 +93,7 @@ node asar-get.cjs "<app.asar>" --dir:webview/apps
 | 事项 | 说明 |
 | --- | --- |
 | **路径分隔符** | 脚本接受 `/` 和 `\` 两种写法（Node 在 Windows 上都能处理） |
-| **Git Bash 参数转换** | MSYS 会把 `/webview/apps` 改写成 `D:/Git/webview/apps`。`asar-get.cjs` 会自动还原这种改写；其他脚本对 `/` 开头的归档内路径建议加 `MSYS_NO_PATHCONV=1`（但它同时会阻止 `/c/...` 这类主机路径转换，此时主机路径请写成 `C:/...`） |
+| **Git Bash 参数转换** | MSYS 会把 `/webview/apps` 改写成 `D:/Git/webview/apps`。`asar-get.cjs` 会自动还原这种改写；其他脚本对 `/` 开头的归档内路径建议加 `MSYS_NO_PATHCONV=1`（但它同时会阻止 `/c/...` 这类主机路径转换，此时主机路径请写成 `C:/...`）。**macOS / Linux 无此类转换问题**，直接运行即可 |
 | **文件大小** | `explore-evidence.cjs` 会把 JSON 解析进内存。**超过 ~500 MB 的文件不要用**（Node 有单字符串 512 MiB 硬上限） |
 
 ## 自己写脚本的建议

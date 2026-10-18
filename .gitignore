@@ -6,9 +6,14 @@ package-lock.json
 *.evidence.json
 evidence.json
 trace-input.json
+trace-*.json
+*-view*.json
+*.summary.json
 view.json
 *.asar
 *.asar.unpacked/
+*.us-heap.txt
+_us-strings.txt
 
 # 系统文件
 .DS_Store

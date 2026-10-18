@@ -608,6 +608,9 @@ rea inspect-artifact "<路径>" --token-count
 
 ### 6.6 stdout 与 stderr 的分工
 
+> 本节与后续小节讲的是**原理**；真正卡住时（报错、结果看起来不对），
+> 按症状排查用 [guides/troubleshooting.md](../guides/troubleshooting.md)。
+
 - **stdout**：选定结果文档（"Stdout remains the selected result document"）。
   实测：**结构化错误文档也走 stdout**——包括 `rea inspect-artifact <不存在的路径>`
   这类失败的 `error:` 文档。所以 `rea ... --json > out.json` 拿到的文件
@@ -704,7 +707,7 @@ claude mcp add --scope local rea -- cmd.exe /d /c npx -y rea-agents@6.5.0 mcp
 - **配一个原生引擎**（Hopper / Ghidra / IDA）：见官方
   `docs/installation.md` 与 `docs/ida-provider.md`；配好后
   `rea doctor --provider <id> --json` 验证。
-- **agent 深度集成**：本手册 `guides/` 下的接入章节；官方
+- **agent 深度集成**：本手册 [02-agent-integration.md](02-agent-integration.md)（把 REA 接进你的 AI Agent）；官方
   [client configuration](https://github.com/morluto/rea/blob/main/docs/client-configuration.md)
   有各客户端的配置路径与故障排查。
 

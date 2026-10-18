@@ -68,6 +68,15 @@ rea analyze-javascript-application "<路径>/app.asar" --integrity-policy record
 → 一套设计规范的完整 API
 ```
 
+### 打包配置画像（Electron fuses）
+
+`inspect-electron-fuses` 秒级读出主程序里 9 个 fuse 开关的取值
+（【实测】对 `OpenCode.exe`）：`RunAsNode: enabled`、
+`EnableNodeCliInspectArguments: enabled`、`EnableEmbeddedAsarIntegrityValidation: disabled`、
+`OnlyLoadAppFromAsar: disabled`（其余 5 个未列，报告以"记录状态"为目的，不作利用性判断）。
+这组取值和 §"方法要点"里 `--integrity-policy` 遇到的实际状况相互印证：
+应用允许运行时观察、但没有强制 asar 完整性校验。
+
 ---
 
 ## 方法要点
@@ -99,6 +108,9 @@ rea inspect-analysis-view view.json --format json
 ---
 
 ## 目录内容
+
+> 以下是**分析时的工作区**快照；evidence 等分析产物**不随本仓库发布**
+> （脚本本身已收入仓库 [`tools/`](../tools/README.md)，可复用）。
 
 ```
 tools/

@@ -102,7 +102,7 @@ rea trace-application-feature trace-input.json --format json
 - `summary`：Electron 表面计数（`browser_windows`、`explicit_web_preferences`、`context_bridge_apis`、`exposed_api_members`、`ipc.operations / literal_channels / main_handlers / paired_renderer_transmissions / ambiguous_renderer_transmissions` 等）；
 - `integrity_contradictions`、`limitations`、`coverage`。
 
-**实际例子**（【实测】）：OpenCode 桌面版 146 MB 的 `app.asar` 全程跑通——evidence 354 MB；图谱 **27,278 节点 / 32,977 边 / 7,823 条终端路径**；`statistics` 里 asar 相关文件 6,702、解析 JS 4,489、AST 节点 4,751,494、findings 30,648；`summary.ipc` 163 个操作 / 76 个字面量通道 / 81 个主进程 handler / 55 对配对。追踪 `kill-sidecar` 得到 renderer `out/preload/index.js:11`（invoke）↔ main `out/main/index.js:2069`（handle），并给出 5 个原生交接点（`@parcel/watcher`、`node-pty`、`msgpackr-extract` 等）。反例：ChatGPT 桌面版 567 MB ASAR 只分析到 3,757/16,197 个源文件就因"父进程结果容量耗尽"而 `coverage.status = "partial"`。
+**实际例子**（【实测】）：OpenCode 桌面版 146 MB 的 `app.asar` 完整跑通（应用图谱层；semantic 层达 100,000 节点上限后截断，`status: partial`）——evidence 354 MB；图谱 **27,278 节点 / 32,977 边 / 7,823 条终端路径**；`statistics` 里 asar 相关文件 6,702、解析 JS 4,489、AST 节点 4,751,494、findings 30,648；`summary.ipc` 163 个操作 / 76 个字面量通道 / 81 个主进程 handler / 55 对配对。追踪 `kill-sidecar` 得到 renderer `out/preload/index.js:11`（invoke）↔ main `out/main/index.js:2069`（handle），并给出 5 个原生交接点（`@parcel/watcher`、`node-pty`、`msgpackr-extract` 等）。反例：ChatGPT 桌面版 567 MB ASAR 只分析到 3,757/16,197 个源文件就因"父进程结果容量耗尽"而 `coverage.status = "partial"`。
 
 **注意事项**：
 

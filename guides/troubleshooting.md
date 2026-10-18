@@ -19,6 +19,10 @@
 
 文中 `rea` 都可以替换为 `npx -y rea-agents@6.5.0`（免安装用法），行为相同。
 
+> **基础原理**（输出格式、退出码语义、`filter-output`/`token-limit` 的完整规则）
+> 在 [docs/01-getting-started.md 第 6 节](../docs/01-getting-started.md#6-输出怎么看)；
+> 本页只讲症状与救急，两页互补。
+
 ---
 
 ## 症状：`Error: Cannot create a string longer than 0x1fffffe8 characters`

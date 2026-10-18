@@ -380,7 +380,7 @@ xcode, devin, antigravity, finder, file-explorer
    数据区偏移 `base = 8 + u32@4`。注意有 3 字节对齐填充。
 3. `inspect-electron-fuses` —— 秒级拿到安全开关状态。
 
-**教训**：REA 的静态分析适合**中等规模**目标（OpenCode 146MB 全程跑通）。
+**教训**：REA 的静态分析适合**中等规模**目标（OpenCode 146MB 完整产出应用图谱，semantic 层截断于节点上限）。
 超大目标要么分层分析（只喂 `--source-path` 选定的子集），要么用直接解析补充。
 后者的代价是没有 REA 的证据链和跨文件关联，只能看到"文件里有什么"，
 看不到"谁调用了谁"。
