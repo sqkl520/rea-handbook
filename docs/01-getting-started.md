@@ -377,7 +377,7 @@ rea inspect-artifact /bin/ls --format json
 
 ```json
 {
-  "evidence_id": "ev_6b976ade...（64 位十六进制）",
+  "evidence_id": "ev_780277b4...（64 位十六进制）",
   "subject": {
     "name": "where.exe",
     "digest": { "sha256": "a19f7b78..." },
@@ -401,8 +401,10 @@ rea inspect-artifact /bin/ls --format json
 - `normalized_result.next_probes` 是 REA 根据目标类型**建议的下一步**
   （例如看到 PE 会建议 `inspect-managed-artifact` 检查托管元数据）。
 - `coverage.status` 见第 6.5 节——它比退出码更能说明"结果完整度"。
-- 这个命令能吃的目标很广：PE、ELF、Mach-O、目录、`.asar`、ZIP 包、
-  APK/IPA/HAP 等。试一个普通文本文件会得到
+- 这个命令能吃的目标很广：PE、ELF、Mach-O、`.asar`、ZIP 包、
+  APK/IPA/HAP 等。**普通目录不是它的目标**（会报
+  "open_binary accepts files and macOS app bundles"）——JavaScript/Electron
+  目录走 `rea analyze <目录>`。试一个普通文本文件会得到
   `target_unavailable / unsupported binary format`（退出码 1）——
   这是预期报错，不是装坏了。
 
@@ -448,7 +450,7 @@ inventory:
 
 | 能分析什么 | 返回什么 | 命令（CLI） |
 | --- | --- | --- |
-| JavaScript / Electron 应用（目录或 `.asar`） | 模块、imports、source maps、路由、IPC 配对、native add-on 关系 | `rea analyze-javascript-application <路径>`；通用路由 `rea analyze <路径>` |
+| JavaScript / Electron 应用（目录或 `.asar`） | 模块、imports、source maps、路由、IPC 配对、native add-on 关系 | `rea analyze-javascript-application <路径>`；通用路由 `rea analyze <路径>`（打包产物加 `--integrity-policy record-and-continue`，见 §5 末） |
 | Go 二进制（ELF/PE/thin Mach-O） | 内嵌编译器版本、modules、replacements、build settings | `rea inspect-go-binary <路径>` |
 | Rust 二进制 | cargo-auditable crate 名/版本/来源、依赖边 | `rea inspect-rust-binary <路径>` |
 | .NET 程序集（PE/CLI） | 元数据、CIL 指令、声明的 native 依赖（P/Invoke） | `rea inspect-managed-artifact`、`inspect-managed-members`、`inspect-managed-native-boundaries` |
@@ -456,7 +458,7 @@ inventory:
 | Electron fuses | 打包后的 fuse 字节状态 | `rea inspect-electron-fuses <路径>` |
 | Flutter APK | Dart snapshot hash、每 ABI 库摘要、engine 构建 provenance | `rea identify-flutter-build <apk>` |
 | HarmonyOS 包（`.hap`/`.hsp`/`.app`） | 包识别与组件 inventory | `rea inspect-artifact <包路径>` |
-| 通用制品（ZIP/APK/IPA/asar/目录/PE/ELF/Mach-O…） | 清单、哈希、结构、下一步探针 | `rea inspect-artifact <路径>`、`rea extract-artifact <路径>` |
+| 通用制品（ZIP/APK/IPA/asar/PE/ELF/Mach-O…） | 清单、哈希、结构、下一步探针 | `rea inspect-artifact <路径>`、`rea extract-artifact <路径>`（**目录**请用 `rea analyze <目录>`） |
 | Mach-O dylib 解析 | load commands + dyld 路径展开（纯 TypeScript，跨平台） | `rea trace-dylib-resolution` |
 | 网站被动观察（CDP） | 页面结构、脚本、网络观察、请求的截图 | `rea list-browser-targets`、`inspect-web-page`、`analyze-web-bundle`（需 Chrome 系浏览器，自行启动带调试端口） |
 | HAR / SAZ 网络捕获 | 请求、响应、暴露的载荷、来源位置 | `rea inspect-web-network-capture` |
@@ -476,6 +478,11 @@ inventory:
 验证某个具体能力最直接的方式是跑那条命令，或查对应官方 guide。
 （它对自己**已建模的 provider** 的状态报告仍然有用，比如会如实告诉你
 SQLite 因 Node 版本门槛报 `unsupported_version`。）
+
+**一个高频必踩项（Electron/JS 打包产物）**：官方完整性策略默认是
+`fail`——打包工具常会签名/剥离文件，导致哈希校验失败、整个分析中止。
+对这类目标加 `--integrity-policy record-and-continue`（在结果里记录差异但继续分析）。
+三份案例研究里的 Electron 应用都用了这个选项。
 
 ### 需要原生引擎的部分（本节仅作预告）
 
@@ -609,7 +616,8 @@ rea inspect-artifact "<路径>" --token-count
   静态 JS 分析会在 stderr 上输出 **`rea_progress` JSON lines**。
 - 因此 `rea ... > result.json` 是安全的：进度不会污染结果文件。
 
-两个开关：`NO_COLOR=1` 禁用颜色；`--accessible` 用顺序式 yes/no 提示。
+两个开关：`NO_COLOR=1` 禁用颜色（全局）；
+`--accessible`（**仅 `setup` 命令**，不在全局选项里）用顺序式 yes/no 提示。
 
 ### 6.7 脚本里的建议写法
 
@@ -658,9 +666,13 @@ rea inspect-artifact ./app.asar --json | jq . > inspection.json
 
 **Q7.（Windows）传 `/tmp/...` 这样的路径给 REA 后报"文件不存在"？**
 
-Git Bash 的 `/tmp` 实测在
-`C:\Users\<你>\AppData\Local\Temp`，而 Node 收到的 `/tmp/x` 会被解析成
-`D:\tmp\x`（取决于当前盘符）——两边根本不是一个位置。
+先理解两件事：
+- **默认**的 Git Bash 会把**命令行上**的 `/tmp/...` 参数自动转换成
+  Windows 路径（`/tmp` 实测在 `C:\Users\<你>\AppData\Local\Temp`）——所以直接传参通常是好的；
+- 会出问题的是两种情况：**脚本/配置文件里内嵌**的 `/tmp/...` 字符串
+  （不会被 MSYS 转换），或在 `MSYS_NO_PATHCONV=1` 下传参——此时 Node 收到的
+  是字面 `/tmp/x`，会被解析成 `D:\tmp\x`（取决于当前盘符）——两边根本不是一个位置。
+
 解法：`cygpath -w /tmp/x` 转换后再传，或把文件放进项目目录用相对路径。
 另：给脚本传 `/` 开头的**非路径参数**时用 `MSYS_NO_PATHCONV=1` 防止被 MSYS 改写。
 
@@ -686,6 +698,7 @@ claude mcp add --scope local rea -- cmd.exe /d /c npx -y rea-agents@6.5.0 mcp
 
 - **静态 JS / Electron 应用分析**：`rea analyze-javascript-application <目录或 .asar>`
   ——入门后回报最高的能力（IPC 双端配对、模块图谱）。
+  打包产物记得加 `--integrity-policy record-and-continue`。
 - **.NET 程序集**：`rea inspect-managed-artifact` → `inspect-managed-members`
   ——注意全量成员提取有 64 MiB 表示预算，超限时按 `--type` 逐类型提取。
 - **配一个原生引擎**（Hopper / Ghidra / IDA）：见官方
