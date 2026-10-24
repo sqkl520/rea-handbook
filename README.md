@@ -10,7 +10,30 @@
 
 **给第一次用 REA 的人一份写清了坑的第三方手册——每个数都标了它从哪来。**
 
-<sub>基于 REA 6.5.0 写出。Node.js 22.19+ / 24.11+ / 26+（不支持 23、25 及 prerelease）；三平台覆盖不均，Windows 上部分能力不可用。</sub>
+<sub>非官方第三方手册 · 基于 REA 6.5.0 写出 · 三平台覆盖不均（详见「装上就能用」）</sub>
+
+REA 是一个本地跑的逆向工程工具：一个 CLI 加一个 MCP server，把"读二进制、读打包产物"
+变成结构化证据喂给 AI agent。它不执行目标程序——静态读完，给你一张带出处的图。
+
+这是它读一个 Electron 应用主程序的真实输出（231 MB 的 `OpenCode.exe`，9 个安全开关，一次调用；本机实测 7–9 秒）：
+
+```text
+$ rea inspect-electron-fuses OpenCode.exe
+operation: inspect_electron_fuses
+normalized_result:
+  artifact: { sha256: b82ea814…, bytes: 231548456, format: pe }
+  slices[1].sentinels[1].fuses[9]{index,name,state,raw_byte}:
+    0,RunAsNode,enabled,49
+    1,EnableCookieEncryption,disabled,48
+    2,EnableNodeOptionsEnvironmentVariable,enabled,49
+    3,EnableNodeCliInspectArguments,enabled,49
+    4,EnableEmbeddedAsarIntegrityValidation,disabled,48
+    5,OnlyLoadAppFromAsar,disabled,48
+    6,LoadBrowserProcessSpecificV8Snapshot,disabled,48
+    7,GrantFileProtocolExtraPrivileges,enabled,49
+    8,WasmTrapHandlers,enabled,49
+  complete: true
+```
 
 官方文档告诉你有哪些命令。第一次会在第几步卡住，它写了吗？
 
@@ -37,25 +60,6 @@ npx rea-agents setup                                     # 跑通手册里的命
 > **非官方声明**：本仓库是 [REA](https://github.com/morluto/rea)（morluto，MIT 许可）的**第三方学习记录**，
 > 与 REA 项目**无隶属、背书或赞助关系**。**REA 是 morluto 的 MIT 项目：<https://github.com/morluto/rea>。**
 > 本仓库中的教程、提示词与脚本为原创内容；对 REA 的使用遵循其 MIT 许可。
-
-## 合规与数据流
-
-- 本仓库的逆向分析报告基于**公开获取的软件发行包**，使用**静态分析方法**（不执行目标程序、不绕过任何技术保护措施），目的为学习软件设计思想。
-- 分析对象包括 PCL2（源码公开，但采用自定义的分发许可，不是 OSI 开源）、ChatGPT 桌面版（闭源）与 OpenCode（开源）。所有商标与代码版权归各自权利人。报告中的代码片段为分析中整理/重写的示意，用于说明设计思想。
-- 报告**不包含**：可用于规避授权/付费机制的操作细节、密钥或凭据、个人隐私信息。
-- 如果你是本报告分析对象的作者，对内容有异议，请通过 [issue](https://github.com/sqkl520/rea-handbook/issues) 联系，我们会处理。
-
-三个案例都是静态完成的：没有执行过目标程序的任何一行代码，没有绕过任何技术保护措施。分析对象是你本机已安装的软件。**请自行确认你的使用场景合法**，只在你对它有权做分析的目标上跑这些命令。
-
-数据流一句话：全流程在本机做，不联网、不上传、不收集任何东西；仓库里也没有需要保护的数据。完整的归属与第三方工具清单见 [NOTICE.md](NOTICE.md)。
-
-上面四条不是口头承诺，有一条命令能整仓扫一遍（词条在脚本里做了编码存储，所以这条命令本身不含任何敏感字面值）：
-
-```bash
-node verify-handbook.mjs        # 【1】内部链接 【2】合规扫描 【3】占位符 【4】结构 【5】篇幅 【6】行号断言
-```
-
-它一次查这几项：仓库内的相对链接是否都通、有没有敏感内容残留、有没有没填完的占位符、必需文件在不在位，以及**正文里每一条「某文件第 N 行」的说法是否还对得上**——被引文件一改行号就会漂，而你是按行号去跳的。
 
 ## 先看效果：三条断言，每条旁边就是复算命令
 
@@ -84,12 +88,25 @@ IPC：163 个操作 / 76 个字面量通道 / 81 个主进程 handler / 55 对�
 grep -n "27,278" guides/by-target-type.md       # → 第 107 行，整串计数都在这一行
 ```
 
-**三、跨两个数量级的三个真实案例。** 5.5 MB 的单文件 .NET 应用 → 146 MB 的 Electron 归档 → 567 MB 的巨型归档。最后一份只完成了一部分：分析到 3,757 / 16,197 个源文件时父进程结果容量耗尽，报告里原样标注 `status: partial`——**不假装成功**。
+**三、分析出来的不是"概要"，是能直接用的结构。** PCL2 的崩溃诊断子系统，反编译出 46 个崩溃原因枚举——不是猜的，是逐个从 `CrashReason` 常量读出来的：
+
+```
+0  Java虚拟机参数有误          18 确定Mod导致游戏崩溃        36 Fabric报错并给出解决方案
+1  Mod文件被解压              19 怀疑Mod导致游戏崩溃        37 Forge报错
+2  MixinBootstrap缺失         20 Mod配置文件导致游戏崩溃     38 低版本Forge与高版本Java不兼容
+3  内存不足                   21 ModMixin失败              39 版本Json中存在多个Forge
+4  使用JDK                    22 Mod加载器报错             40 Mod过多导致超出ID限制
+…
+```
+
+顺带发现一条：**#35「Fabric报错」在代码里没有生产者**——模板存在，但 `AnalyzeCrit1/2` 都不产生它。这类"文档里有、代码里没有"的坑，是读反编译源码才看得到的。
 
 ```bash
-grep -n "567 MB" case-studies/README.md          # → 规模对照表在 315-317 行
-wc -l < case-studies/pcl2.md                     # → 3635，单份主报告的行数
+wc -l < case-studies/pcl2.md                          # → 3635，单份主报告的行数
+grep -n "枚举全表" case-studies/pcl2.md                 # → 第 1958 行，46 行完整枚举表
 ```
+
+三个案例的规模跨两个数量级：5.5 MB 的单文件 .NET 应用 → 146 MB 的 Electron 归档 → 567 MB 的巨型归档。最后一份只完成了一部分——分析到 3,757 / 16,197 个源文件时父进程结果容量耗尽，报告里原样标注 `status: partial`，**不假装成功**。
 
 ## 装上就能用
 
@@ -200,7 +217,7 @@ grep -n "570,218,269" guides/troubleshooting.md       # → 46 行（必崩的�
 
 - **SQLite 的 Node 版本有独立的更严门槛。** 整体要求 24.11+，SQLite 却要求 **24.15+**（需要原生 `DatabaseSync.limits`）。24.11–24.14 是"满足整体、不满足 SQLite"的陷阱区间——SQLite 能力会报 `available: false`（`unsupported_version`），不细看结果就会漏掉。
 - **`--filter-output` 写错多数静默返回空**（字段名笔误、路径不存在），但未闭合的 `[` 切片例外——会报 `INVALID_OUTPUT_FILTER`（未闭合的 `]` 仍静默）。
-- **`trace-application-feature` 的官方文档给了一个实测不可用的 seed kind。** 文档把 `channel` 列为合法取值，但按源码逻辑它只匹配节点身份而非通道名，实测返回 no-match；改用 `string` 即可命中。
+- **`trace-application-feature` 的 seed kind：拿不准就用 `string`。** 官方把 `channel` 列为合法取值。它并非不能用——源码里 `channel` 会在 `kind === "ipc-channel"` 的节点上匹配 `.label` / `.channel` / `.key`；但实际图谱里通道名常挂在 `javascript-asset` 节点的 `static_analysis.electron.ipc[].channel` 下，那时 `channel` 搜不到，`string` 能。实测 `kill-sidecar`：`channel` 返回 no-match，`string` 命中 2 个。
 - **大 evidence 有 512 MiB 的 Node 硬墙。** V8 单个字符串长度上限约 512 MiB，超限即 `ERR_STRING_TOO_LONG`。几百 MB 的 evidence 投影要用 `jq` 流式处理，`node readFileSync` 路线会直接崩。
 - **`rea capabilities` 不是完整能力清单。** 它只报告需要 provider（Ghidra 等）的操作；零依赖能力不在输出里——没列不等于不能用。
 
@@ -214,7 +231,7 @@ grep -rn "不是完整能力清单" docs/ guides/
 
 第 1、3 条要真复现得装 REA 并备齐条件（Node 24.11–24.14 / 一个带通道的 Electron 归档），仓库内的引用位置是 `docs/01-getting-started.md` §2.2 与 `guides/troubleshooting.md` §trace no-match。
 
-`rea capabilities` 的输出里没有静态 JS/Electron 分析、Go/Rust 检查、PE 资源、Electron fuses、网站观察——它们照常可用。要判断本机状态，看 `rea doctor` 具体哪一项失败，别只看 `healthy` 那个总布尔值：实测环境里它是 `false`，零依赖功能却全部可用。
+顺带一条最容易误判的：装完跑 `rea doctor`，`healthy` 是 `false` 是**正常的**——它把"没配 Ghidra/Hopper"也算进总分，而零依赖功能全部可用。判断能不能干活，看具体哪一项失败，别看那个总布尔值（详见 `docs/01-getting-started.md` §4.2）。
 
 ## 这手册和官方文档的关系
 
@@ -284,6 +301,25 @@ grep -rhoE "require\(['\"][^'\"]+['\"]\)" tools/*.cjs \
 ```
 
 发布相关的内部文件不在仓库里，找不到不是丢了。
+
+## 合规与数据流
+
+- 本仓库的逆向分析报告基于**公开获取的软件发行包**，使用**静态分析方法**（不执行目标程序、不绕过任何技术保护措施），目的为学习软件设计思想。
+- 分析对象包括 PCL2（源码公开，但采用自定义的分发许可，不是 OSI 开源）、ChatGPT 桌面版（闭源）与 OpenCode（开源）。所有商标与代码版权归各自权利人。报告中的代码片段为分析中整理/重写的示意，用于说明设计思想。
+- 报告**不包含**：可用于规避授权/付费机制的操作细节、密钥或凭据、个人隐私信息。
+- 如果你是本报告分析对象的作者，对内容有异议，请通过 [issue](https://github.com/sqkl520/rea-handbook/issues) 联系，我们会处理。
+
+三个案例都是静态完成的：没有执行过目标程序的任何一行代码，没有绕过任何技术保护措施。分析对象是你本机已安装的软件。**请自行确认你的使用场景合法**，只在你对它有权做分析的目标上跑这些命令。
+
+数据流一句话：全流程在本机做，不联网、不上传、不收集任何东西；仓库里也没有需要保护的数据。完整的归属与第三方工具清单见 [NOTICE.md](NOTICE.md)。
+
+上面四条不是口头承诺，有一条命令能整仓扫一遍（词条在脚本里做了编码存储，所以这条命令本身不含任何敏感字面值）：
+
+```bash
+node verify-handbook.mjs        # 【1】内部链接 【2】合规扫描 【3】占位符 【4】结构 【5】篇幅 【6】行号断言
+```
+
+它一次查这几项：仓库内的相对链接是否都通、有没有敏感内容残留、有没有没填完的占位符、必需文件在不在位，以及**正文里每一条「某文件第 N 行」的说法是否还对得上**——被引文件一改行号就会漂，而你是按行号去跳的。
 
 ## 这本手册会过期，也有些事它做不到
 
