@@ -251,5 +251,109 @@ if (!existsSync(EVIDENCE)) {
   if (!linked) info('case-studies/README.md 里没有指向 evidence/ 的链接');
 }
 
+// ── 8. 锚点核对 ──
+// 【1】只验证"链接指向的文件在不在"——它用 split('#')[0] 把片段抹掉了，
+// 所以页内锚点 `]( #xxx)` 和跨文件 `](a.md#xxx)` 从来没被检查过。
+// 中文标题带全角标点时，GitHub 的 slug 会把标点整个删掉；改一个标题字，
+// 锚点就静默 404，而"链接全绿"仍然通过。
+//
+// 这里按 GitHub 的 slug 规则实算，并且是**围栏感知**的：代码块里的
+// `# 注释` 不是标题，用朴素正则会把它们算进 slug 集合，从而给假绿灯。
+console.log('\n【8】锚点核对');
+
+// GitHub slugify：转小写 → 去 HTML/反引号/链接语法 → 只留字母数字连字符空格 → 空格转连字符
+const slugify = (t) =>
+  String(t)
+    .toLowerCase()
+    .replace(/<[^>]+>/g, '')
+    .replace(/`/g, '')
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/\*\*|__|\*/g, '')
+    .replace(/[^\p{L}\p{N}\- ]/gu, '')
+    .replace(/ /g, '-');
+
+// 收集一个文件的真实标题（跳过代码围栏内的内容）
+function headingSlugs(mdPath) {
+  const lines = readFileSync(mdPath, 'utf8').split('\n');
+  const slugs = new Set();
+  let inFence = false;
+  let fenceChar = '';
+  for (const line of lines) {
+    const fence = /^\s*(`{3,}|~{3,})/.exec(line);
+    if (fence) {
+      if (!inFence) {
+        inFence = true;
+        fenceChar = fence[1][0];
+      } else if (fence[1][0] === fenceChar) {
+        inFence = false;
+      }
+      continue;
+    }
+    if (inFence) continue;
+    const h = /^#{1,6}\s+(.*)$/.exec(line);
+    if (!h) continue;
+    const base = slugify(h[1].trim());
+    // 重复标题 GitHub 会加 -1 -2 后缀
+    let s = base;
+    let n = 0;
+    while (slugs.has(s)) {
+      n += 1;
+      s = `${base}-${n}`;
+    }
+    slugs.add(s);
+  }
+  return slugs;
+}
+
+const slugCache = new Map();
+const slugsOf = (mdPath) => {
+  if (!slugCache.has(mdPath)) slugCache.set(mdPath, headingSlugs(mdPath));
+  return slugCache.get(mdPath);
+};
+
+let anchorChecked = 0;
+let anchorDead = 0;
+let crossFileAnchors = 0;
+for (const f of mdFiles) {
+  const text = readFileSync(f, 'utf8');
+  const dir = dirname(f);
+  const rel = relative(ROOT, f);
+  for (const m of text.matchAll(/\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g)) {
+    const url = m[2];
+    if (/^https?:|^mailto:/.test(url)) continue;
+    if (!url.includes('#')) continue;
+
+    const [pathPart, fragment] = url.split('#');
+    if (!fragment) continue;
+    // GitHub 的锚点是原文片段，不需要 URL 解码成别的东西；但 %20 之类要还原
+    let frag = fragment;
+    try {
+      frag = decodeURIComponent(fragment);
+    } catch {
+      /* 保留原样 */
+    }
+
+    const targetPath = pathPart ? resolve(dir, pathPart) : f;
+    if (!existsSync(targetPath)) {
+      // 文件不存在由【1】报，这里不重复
+      continue;
+    }
+    if (pathPart) crossFileAnchors += 1;
+    anchorChecked += 1;
+
+    const slugs = slugsOf(targetPath);
+    if (!slugs.has(frag)) {
+      const where = pathPart ? `${rel} → ${pathPart}#${fragment}` : `${rel} 页内 #${fragment}`;
+      warn(`${where} 是死锚点（该文件的真实标题 slug：${[...slugs].slice(0, 6).join(' | ')}${slugs.size > 6 ? ' …' : ''}）`);
+      anchorDead += 1;
+    }
+  }
+}
+if (anchorChecked === 0) {
+  info('没有带 #片段 的链接需要核对');
+} else if (anchorDead === 0) {
+  ok(`${anchorChecked} 个锚点全部命中真实标题${crossFileAnchors ? `（其中 ${crossFileAnchors} 个跨文件）` : ''}`);
+}
+
 console.log(`\n${problems === 0 ? '✅ 全部通过' : `⚠️  发现 ${problems} 个问题`}\n`);
 process.exit(problems === 0 ? 0 : 1);
