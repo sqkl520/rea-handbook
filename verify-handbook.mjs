@@ -116,5 +116,85 @@ for (const f of [...mdFiles].sort()) {
   info(`${String(n).padStart(5)} 行  ${relative(ROOT, f)}`);
 }
 
+// ── 6. 行号断言核对 ──
+// 文档里写着「grep -n "X" file # → 第 N 行」这种可核对的断言。被引文件一改，行号就漂，
+// 而读者是按行号去跳的。这里把每条断言实跑一遍：
+//   · 模式零命中            → 那条命令对读者是空的
+//   · 声称的行号不在命中里  → 读者跳到错的地方
+// 同一行可能并排写两条命令，所以断言只在该命令**自己那段文本**里找
+// （从这条命令的起点到下一处 `grep -n` 或行尾）。
+console.log('\n【6】行号断言');
+const claimRe = /grep -n "([^"]+)"\s+([A-Za-z0-9_./-]+\.md)/g;
+let claimsChecked = 0;
+let claimsFailed = 0;
+for (const f of mdFiles) {
+  const lines = readFileSync(f, 'utf8').split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const matches = [...line.matchAll(claimRe)];
+    for (let k = 0; k < matches.length; k++) {
+      const m = matches[k];
+      const [, pattern, target] = m;
+      // 这条命令自己的文本片段（到下一处 grep -n 之前为止）
+      const segStart = m.index;
+      const segEnd = k + 1 < matches.length ? matches[k + 1].index : line.length;
+      const segment = line.slice(segStart, segEnd);
+
+      const targetPath = resolve(ROOT, target);
+      if (!existsSync(targetPath)) {
+        warn(`${relative(ROOT, f)}:${i + 1} 行号断言指向不存在的文件 ${target}`);
+        claimsFailed++;
+        continue;
+      }
+      const hits = readFileSync(targetPath, 'utf8')
+        .split('\n')
+        .map((t, n) => (t.includes(pattern) ? n + 1 : 0))
+        .filter(Boolean);
+      if (hits.length === 0) {
+        warn(`${relative(ROOT, f)}:${i + 1} 模式 ${JSON.stringify(pattern)} 在 ${target} 里零命中——给读者的这条命令是空的`);
+        claimsFailed++;
+        continue;
+      }
+
+      // 断言解析：区间（A-B 行）表示"内容横跨这段"，只要求端点落在命中范围附近；
+      // 「A 与 B 行」「第 N 行」要求确实命中。
+      const claims = [];      // { nums: [...], kind: 'span' | 'exact' }
+      let rest = segment;
+      for (const c of [...rest.matchAll(/(\d+)\s*[-–]\s*(\d+)\s*行/g)]) {
+        claims.push({ nums: [+c[1], +c[2]], kind: 'span' });
+        rest = rest.replace(c[0], ' ');
+      }
+      for (const c of [...rest.matchAll(/(\d+)\s*与\s*(\d+)\s*行/g)]) {
+        claims.push({ nums: [+c[1], +c[2]], kind: 'exact' });
+        rest = rest.replace(c[0], ' ');
+      }
+      for (const c of rest.matchAll(/第\s*(\d+)\s*行/g)) {
+        claims.push({ nums: [+c[1]], kind: 'exact' });
+      }
+      if (claims.length === 0) continue;   // 没写行号，只做了"命令非空"这一层
+
+      claimsChecked++;
+      for (const cl of claims) {
+        const bad = cl.nums.filter((n) => !hits.includes(n));
+        if (bad.length === 0) continue;
+        if (cl.kind === 'span') {
+          // 区间断言：只要有命中落在 [lo, hi] 内即可（表格/多行段落常横跨几行）
+          const [lo, hi] = cl.nums;
+          const inside = hits.some((h) => h >= lo && h <= hi);
+          if (inside) continue;
+        }
+        warn(
+          `${relative(ROOT, f)}:${i + 1} 声称 ${bad.join('/')} 行，实测命中 ${hits.join(',')}（模式 ${JSON.stringify(pattern)}，目标 ${target}）`
+        );
+        claimsFailed++;
+        break;
+      }
+    }
+  }
+}
+if (claimsFailed === 0) {
+  ok(`${claimsChecked} 条行号断言全部命中（另有无行号的 grep 命令已核对非空）`);
+}
+
 console.log(`\n${problems === 0 ? '✅ 全部通过' : `⚠️  发现 ${problems} 个问题`}\n`);
 process.exit(problems === 0 ? 0 : 1);

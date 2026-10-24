@@ -1,73 +1,191 @@
+<div align="center">
+
 # REA Handbook（非官方）
 
-> 一本 [REA](https://github.com/morluto/rea) 的第三方使用手册：入门指南 + 实战踩坑 + 提示词模板 + 三个真实案例分析 + 一组分析脚本。
+> *「`rea capabilities` 没列的，不代表不能用。」*
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-f4c430?style=flat-square)](LICENSE)
 [![Unofficial handbook](https://img.shields.io/badge/REA-Unofficial%20handbook-d73a49?style=flat-square)](NOTICE.md)
 [![Based on REA 6.5.0](https://img.shields.io/badge/based%20on-REA%206.5.0-blue?style=flat-square)](https://www.npmjs.com/package/rea-agents)
+
+**给第一次用 REA 的人一份写清了坑、每条都能自己复算的第三方手册。**
+
+<sub>基于 REA 6.5.0 写出。Node.js 22.19+ / 24.11+ / 26+（不支持 23、25 及 prerelease）；三平台覆盖不均，Windows 上部分能力不可用。</sub>
+
+官方文档告诉你有哪些命令。第一次会在第几步卡住，它写了吗？
+
+你把 146 MB 的归档跑完，拿到 354 MB 的 evidence，然后用 `readFileSync` 去读它：
+`Error: Cannot create a string longer than 0x1fffffe8 characters`，直接崩。
+这条 512 MiB 的墙，官方文档一个字没提。本手册存在的全部理由就是写这些：
+14 种症状、11 类目标、22 处【实测】标注，每一条旁边都留了能当场复算的命令。
+
+```bash
+git clone https://github.com/sqkl520/rea-handbook.git    # 读这本手册（本仓库）
+npx rea-agents setup                                     # 跑通手册里的命令（装的是 REA，不是本仓库）
+```
+
+两条路是分开的：克隆本仓库你只得到 Markdown 和脚本；要跑分析，得装 REA。
+
+[看效果](#先看效果三条断言每条旁边就是复算命令) · [装上就能用](#装上就能用) · [机制](#机制64-mib-预算与-512-mib-硬墙) · [你带着什么问题来](#你带着什么问题来就翻哪一篇) · [局限](#这本手册会过期也有些事它做不到)
+
+</div>
+
+---
 
 > [!IMPORTANT]
 > **非官方声明**：本仓库是 [REA](https://github.com/morluto/rea)（morluto，MIT 许可）的**第三方学习记录**，
 > 与 REA 项目**无隶属、背书或赞助关系**。**REA 是 morluto 的 MIT 项目：<https://github.com/morluto/rea>。**
 > 本仓库中的教程、提示词与脚本为原创内容；对 REA 的使用遵循其 MIT 许可。
 
-## 免责声明
+## 合规与数据流
 
 - 本仓库的逆向分析报告基于**公开获取的软件发行包**，使用**静态分析方法**（不执行目标程序、不绕过任何技术保护措施），目的为学习软件设计思想。
 - 分析对象包括闭源商业软件（Plain Craft Launcher 2、ChatGPT 桌面版）与开源软件（OpenCode）。所有商标与代码版权归各自权利人。报告中的代码片段为分析中整理/重写的示意，用于说明设计思想。
 - 报告**不包含**：可用于规避授权/付费机制的操作细节、密钥或凭据、个人隐私信息。
 - 如果你是本报告分析对象的作者，对内容有异议，请通过 [issue](https://github.com/sqkl520/rea-handbook/issues) 联系，我们会处理。
 
-## 这是什么
+三个案例都是静态完成的：没有执行过目标程序的任何一行代码，没有绕过任何技术保护措施。分析对象是你本机已安装的软件。**请自行确认你的使用场景合法**，只在你对它有权做分析的目标上跑这些命令。
 
-这是一本 **REA (Reverse Engineer Anything)** 的第三方使用手册，另附两份提示词模板、三个真实案例分析，和一组自写分析脚本。
+数据流一句话：全流程在本机做，不联网、不上传、不收集任何东西；仓库里也没有需要保护的数据。完整的归属与第三方工具清单见 [NOTICE.md](NOTICE.md)。
 
-REA 的官方文档很全，但它偏参考手册：按工具罗列参数与契约，较少回答"第一次用从哪开始""实际会踩什么坑"。本手册补的就是这两件事——**怎么上手**、**会踩什么坑**，包括官方文档没写、甚至与实测不符的地方（每条注明来源与验证方式）。
-
-## 里面有什么
-
-| 目录 | 内容 | 适合谁 |
-| --- | --- | --- |
-| [`docs/`](docs/) | 入门指南：环境准备、安装、第一个命令、核心概念 | 第一次用 REA |
-| [`guides/`](guides/) | 按目标类型的操作手册 + 疑难排查 | 用起来卡住了 |
-| [`prompts/`](prompts/) | 两份提示词模板：完整版（含项目映射）与纯学习版 | 想让 AI 帮你做逆向 |
-| [`case-studies/`](case-studies/) | 三个真实案例：PCL2（VB.NET）、ChatGPT 桌面版、OpenCode 桌面版（Electron） | 想看实际产出 |
-| [`tools/`](tools/) | 零依赖分析脚本：ASAR 解析、.NET 元数据、`#US` 字符串堆、IPC 扫描等 | 想自己动手深挖 |
-
-## 快速开始
-
-前置只有 Node.js 与 npm：**Node.js 22.19+ / 24.11+ / 26+**（不支持 23、25 及 prerelease 版本）。
+上面四条不是口头承诺，有一条命令能整仓扫一遍（词条在脚本里做了编码存储，所以这条命令本身不含任何敏感字面值）：
 
 ```bash
-# 1. 安装（二选一）
-npx rea-agents setup              # 交互式：把 REA 注册到你的 AI agent（Claude Code / Codex / Cursor 等）
-npm install --global rea-agents   # 或：只装命令行，得到 rea 命令
-
-# 2. 确认安装与环境自检（可选）
-rea --help
-rea doctor                        # 报告本机哪些能力可用
-
-# 3. 跑一个零依赖分析（不需要 Ghidra / IDA / Hopper）
-rea inspect-go-binary /path/to/go-binary --json                # 任意 Go 编译的二进制
-rea analyze-javascript-application /path/to/app.asar --json    # 静态分析 Electron 应用
+node verify-handbook.mjs        # 【1】内部链接 【2】合规扫描 【3】占位符 【4】结构 【5】篇幅 【6】行号断言
 ```
 
-不想全局安装时，每个命令都可以用 `npx -y rea-agents@latest <命令>` 一次性运行。
+它一次查这几项：仓库内的相对链接是否都通、有没有敏感内容残留、有没有没填完的占位符、必需文件在不在位，以及**正文里每一条「某文件第 N 行」的说法是否还对得上**——被引文件一改行号就会漂，而你是按行号去跳的。
 
-**大部分能力零依赖**：静态分析 JavaScript/Electron（ASAR 或目录）、Go/Rust 二进制、.NET 程序集、SQLite、Flutter、PE 资源等，只要 Node.js + npm。需要 Ghidra/Hopper/IDA 的只有原生二进制反编译一类。
+## 先看效果：三条断言，每条旁边就是复算命令
 
-平台限制不少（如 Windows 上 Hopper 不可用、Ghidra 仅实验性支持、部分能力仅限 Linux），细节见 [guides/](guides/)。想先看产出再动手，直接翻 [case-studies/](case-studies/)。
+**一、那道官方文档没写的墙。** `guides/troubleshooting.md` 第一种症状的报错原文：
 
-## 这手册和官方文档的关系
+```text
+Error: Cannot create a string longer than 0x1fffffe8 characters
+code: 'ERR_STRING_TOO_LONG'
+```
 
-**官方文档是权威**：[morluto/rea](https://github.com/morluto/rea) 的 `docs/` 与官网 [rea.tools](https://rea.tools/)。
+为什么值得单独说：146 MB 的 asar 产出 354 MB evidence（能读通），567 MB 的 asar 产出 570,218,269 字节（必崩）。同一套脚本换个目标就崩，最容易被当成偶发。
 
-本手册基于官方文档 + 本机实测写成，补充两类官方没展开的东西：
+```bash
+grep -c '^## 症状' guides/troubleshooting.md    # → 14 种症状条目
+```
 
-1. **上手路径**——第一次用，按什么顺序做什么；
-2. **实测的坑**——官方文档没有、或与实测不符的行为。
+**二、跑通一场能产出多少个数字。** OpenCode 桌面版 146 MB 的 `app.asar`，【实测】计数（`guides/by-target-type.md` 第 107 行）：
 
-若与官方文档冲突，**以官方为准**。本手册基于 REA 6.5.0 写出，REA 更新很快，行为可能随版本变化。
+```
+图谱 27,278 节点 / 32,977 边 / 7,823 条终端路径
+AST 节点 4,751,494 / findings 30,648 / 解析 JS 4,489 个
+IPC：163 个操作 / 76 个字面量通道 / 81 个主进程 handler / 55 对配对
+```
+
+```bash
+grep -n "27,278" guides/by-target-type.md       # → 第 107 行，整串计数都在这一行
+```
+
+**三、跨两个数量级的三个真实案例。** 5.5 MB 的单文件 .NET 应用 → 146 MB 的 Electron 归档 → 567 MB 的巨型归档。最后一份只完成了一部分：分析到 3,757 / 16,197 个源文件时父进程结果容量耗尽，报告里原样标注 `status: partial`——**不假装成功**。
+
+```bash
+grep -n "567 MB" case-studies/README.md          # → 规模对照表在 315-317 行
+wc -l < case-studies/pcl2.md                     # → 3635，单份主报告的行数
+```
+
+## 装上就能用
+
+这本手册有两条路径，别混：**读手册**只需要 Git，**跑通手册里的命令**才需要装 REA。
+
+**读手册**（三选一）
+
+| 方式 | 做法 | 需要什么 |
+| --- | --- | --- |
+| 克隆 | `git clone https://github.com/sqkl520/rea-handbook.git` | 只要 Git |
+| 直接看 | 在 GitHub 上翻 `docs/` `guides/` `case-studies/` | 只要浏览器 |
+| 只用脚本 | `node tools/asar-peek.cjs <app.asar> package.json` | Node.js，无安装步骤 |
+
+**跑手册里的命令**（三选一）
+
+```bash
+npx rea-agents setup              # 交互式：把 REA 注册到你的 AI agent（Claude Code / Codex / Cursor 等）
+npm install --global rea-agents   # 或：只装命令行，得到 rea 命令
+npx -y rea-agents <命令>          # 或：不装，每次一次性运行
+```
+
+装完自检两条：`rea doctor` 看本机哪些能力可用，`node verify-handbook.mjs` 看手册本身有没有坏。
+
+前置是 Node.js 22.19+ / 24.11+ / 26+（不支持 23、25 及 prerelease）。**大部分能力零依赖**：静态分析 JavaScript/Electron、Go/Rust 二进制、.NET 程序集、PE 资源、Electron fuses 等，只要 Node.js；需要 Ghidra/Hopper/IDA 的只有原生二进制反编译一类。SQLite 另有更严的门槛，见下文「手册里几个最有价值的发现」。
+
+然后在 agent 里直接说话：
+
+```text
+分析 /path/to/electron-app.asar，先给我图谱再给 IPC 通道表
+这个 .exe 的类型清单全量提取失败了，按 64 MiB 预算的出路重写命令
+把 case-studies/opencode.md 的追踪方法用到我手上的归档上
+```
+
+## 你带着什么问题来，就翻哪一篇
+
+| 你的处境 | 翻哪一篇 | 可复算的规模 |
+| --- | --- | --- |
+| 第一次装，不知道先跑哪条命令 | [docs/01-getting-started.md](docs/01-getting-started.md) | `wc -l < docs/01-getting-started.md` → 719 |
+| 要把 REA 接进 AI agent | [docs/02-agent-integration.md](docs/02-agent-integration.md) | — |
+| 手上有个目标，不知道该用哪个命令 | [guides/by-target-type.md](guides/by-target-type.md) | 11 类目标，其中 6 类零依赖 |
+| 命令报错了，或结果看不懂 | [guides/troubleshooting.md](guides/troubleshooting.md) | 14 种症状，675 行 |
+| 想看真实产出长什么样 | [case-studies/README.md](case-studies/README.md) | 3 个案例，5.5 / 146 / 567 MB |
+| 想让 AI 替你做分析 | [prompts/README.md](prompts/README.md) | 2 份模板 |
+| REA 覆盖不到的角度，要自己写解析 | [tools/README.md](tools/README.md) | 14 个脚本，1,146 行 |
+
+一句话分工：README 只管"凭什么信"和"从哪进"，具体内容由各目录自己的 README 承担，两边不重复写。
+
+表里那几个规模数全都能当场数出来：
+
+```bash
+grep -E '^\| [0-9]+ \|' guides/by-target-type.md | wc -l          # → 11 类目标
+grep -E '^\| [0-9]+ \|' guides/by-target-type.md | grep -c 零依赖  # → 其中 6 类
+wc -l < guides/troubleshooting.md                                  # → 675 行
+git ls-files 'tools/*.cjs' | xargs wc -l | tail -1                  # → 1146 行 / 14 个脚本
+```
+
+（`11 类`用速查表行数计）
+
+## 机制：64 MiB 预算与 512 MiB 硬墙
+
+手册的机制是两条东西：一套三级事实标签，五道会撞到的上限。分级制度让读者能区分"官方写的"和"我们测出来的"：
+
+| 标签 | 含义 | `guides/by-target-type.md` 里的数量 |
+| --- | --- | --- |
+| 【官方】 | 官方文档与契约写明的 | 8 处 |
+| 【实测】 | 我们在真实目标上跑出来的 | 22 处 |
+| 【我们的发现】 | 官方没写、甚至与官方不符的 | 3 处 |
+
+```bash
+grep -c "【官方】" guides/by-target-type.md          # → 8
+grep -c "【实测】" guides/by-target-type.md          # → 22
+grep -c "【我们的发现】" guides/by-target-type.md     # → 3
+```
+
+**正文每一条【实测】标注都经过独立复核后合并进文档。** 复核轮次与材料不在仓库里，所以这里只给这条定性说法，不给数字。给不出复算命令的数字我们就不写。
+
+五条撞得到的上限：
+
+| 上限 | 数值 | 什么时候撞上 | 官方写了吗 |
+| --- | --- | --- | --- |
+| V8 单字符串硬墙 | `0x1fffffe8` = 512 MiB | `readFileSync` 读几百 MB 的 evidence | 没提这道墙 |
+| .NET 表示预算 | 64 MiB（`67108864`） | `inspect-managed-members` 全量提取 | 写了预算，没写"全量失败时拿不到类型清单"这一层门槛 |
+| semantic 层节点上限 | 100,000 | 大图谱的 semantic 层，`status: partial` | 本手册记为【实测】，未核对官方是否另文说明 |
+| 父进程结果容量 | 视目标而定 | 567 MB 归档停在 3,757 / 16,197 个源文件 | 给了调节参数 |
+| 退出码语义 | 0 | 64 MiB 预算失败时退出码仍是 0，`coverage.state = "unavailable"` | 0/1/128+N 官方有表；这条组合没点破 |
+
+第二行值得多说一句，因为它是本手册最反直觉的一条：**文件只有 5.5 MB，全量成员提取照样失败**——`coverage.state = "unavailable"`，`detail` 里写着超出 `67108864` 字节。这 64 MiB 不是文件大小上限，是一条独立的表示预算；同一篇还给了另一个方向的反例：3.4 MB 的 `System.dll` 也会撑爆它。复算：`grep -n "67108864" guides/by-target-type.md` → 第 146 行；`grep -n "67108864" guides/troubleshooting.md` → 112 与 120 行。
+
+表里剩下三个数同样在仓库内可点：
+
+```bash
+grep -n "100,000 节点" case-studies/README.md        # → 33 与 212 行（semantic 上限）
+grep -n "3,757" case-studies/README.md                # → 139 行（567 MB 停在哪）
+grep -n "570,218,269" guides/troubleshooting.md       # → 46 行（必崩的那个体量）
+```
+
+（5.5 MB 那份是 PCL2 的数字，锁在它的某个版本上。PCL2 自带更新机制，写手册期间它把自己更新了，所以你现在复跑，类型数、方法数对不上是正常的——`case-studies/pcl2.md` 开头的"可复现性说明"就是这个意思。）
 
 ## 手册里几个最有价值的发现
 
@@ -77,10 +195,118 @@ rea analyze-javascript-application /path/to/app.asar --json    # 静态分析 El
 - **大 evidence 有 512 MiB 的 Node 硬墙。** V8 单个字符串长度上限约 512 MiB，超限即 `ERR_STRING_TOO_LONG`。几百 MB 的 evidence 投影要用 `jq` 流式处理，`node readFileSync` 路线会直接崩。
 - **`rea capabilities` 不是完整能力清单。** 它只报告需要 provider（Ghidra 等）的操作；零依赖能力不在输出里——没列不等于不能用。
 
-## 许可
+第 2、4、5 条在仓库内有原句可点，三条命令定位到行：
+
+```bash
+grep -n "INVALID_OUTPUT_FILTER" guides/troubleshooting.md
+grep -n "0x1fffffe8" guides/troubleshooting.md
+grep -rn "不是完整能力清单" docs/ guides/
+```
+
+第 1、3 条要真复现得装 REA 并备齐条件（Node 24.11–24.14 / 一个带通道的 Electron 归档），仓库内的引用位置是 `docs/01-getting-started.md` §2.2 与 `guides/troubleshooting.md` §trace no-match。
+
+`rea capabilities` 的输出里没有静态 JS/Electron 分析、Go/Rust 检查、PE 资源、Electron fuses、网站观察——它们照常可用。要判断本机状态，看 `rea doctor` 具体哪一项失败，别只看 `healthy` 那个总布尔值：实测环境里它是 `false`，零依赖功能却全部可用。
+
+## 这手册和官方文档的关系
+
+**官方文档是权威**：[morluto/rea](https://github.com/morluto/rea) 的 `docs/` 与官网 [rea.tools](https://rea.tools/)。
+
+| | **本手册** | 官方文档 | `rea doctor` / `rea capabilities` |
+| --- | --- | --- | --- |
+| 回答什么问题 | 第一次会卡在哪、实际什么行为 | 有什么命令、契约是什么 | 我这台机器现在什么状态 |
+| 粒度 | 场景与症状 | 工具与参数 | 单项能力 |
+| 更新速度 | 慢，随版本漂移 | 跟版本走 | 实时 |
+| 冲突时谁权威 | **以官方为准** | 权威 | 权威（本机） |
+
+两句公道话。官方文档在"命令与契约"这件事上做得比谁都全，本手册不打算重复它；而"第一次用从哪开始"本来就不是参考手册的义务。它不写这些，是分工不同，不是遗漏。
+
+复算基线（三个数都印在各篇开头的注释块里，克隆后可查）：
+
+```bash
+grep -rn "最后核对日期" docs/ guides/              # → 3 处，全是 2026-10-18
+grep -rn "6\.5\.0" docs/ guides/ | grep -c 版本     # → 6 处版本锚点
+```
+
+若与官方文档冲突，**以官方为准**。本手册基于 REA 6.5.0 写出，REA 更新很快，行为可能随版本变化。
+
+## 两个被推翻的判断
+
+写手册过程中被现实纠正的两次，都留在仓库里，没有藏起来。
+
+**一、案例数字被目标自己的更新机制改掉。** PCL2 报告的 SHA-256 锁的是分析时那份文件；手册写作期间，安装目录里的文件被 PCL2 自己的更新机制替换了，类型数与字符串数随之变化。于是报告头部补了一段"可复现性说明"，并把"分析任何自更新软件前先记录哈希"写成了通用提醒。
+
+**二、`--scope project` 与 `@latest` 这两条写法，在手册里被标成了"别用"。** `--scope project` 会往仓库里写可提交的 `.mcp.json`；`@latest` 做持久注册违反官方自己那条"持久注册要用确切版本"的要求，行为和你的环境会随上游发布静默漂移。手册在这一条上补的是官方没写在同处的一句：`--scope local` 的注册不会被 `rea doctor` / `rea uninstall` 报告或移除，要 `claude mcp remove --scope local rea` 手动清理（见 `docs/01-getting-started.md` §3.5 与 §7、`docs/02-agent-integration.md`）。
+
+## 仓库结构
+
+```text
+rea-handbook/
+├── README.md                        # 你正在读的这份：凭什么信 + 从哪进
+├── LICENSE / NOTICE.md              # MIT 全文（纯模板）／归属、商标、第三方工具清单
+├── verify-handbook.mjs              # 链接 + 合规扫描 + 占位符 + 结构 + 行号断言
+├── docs/                            # 3 个文件：入门、agent 接入、目录页
+├── guides/                          # 3 个文件：11 类目标怎么做、14 种症状怎么救
+├── case-studies/                    # 4 个文件：PCL2 / ChatGPT 桌面版 / OpenCode
+├── prompts/                         # 3 个文件：完整版与纯学习版提示词模板
+└── tools/                           # 15 个文件：14 个分析脚本 + 清单
+```
+
+```bash
+git ls-files | wc -l                              # → 34 个入库文件
+git ls-files '*.md' | wc -l                       # → 16 篇 Markdown
+git ls-files 'tools/*.cjs' | wc -l                # → 14 个脚本
+```
+
+四个正文目录各自的行数（`git ls-files docs guides case-studies prompts | xargs cat | wc -l`，`wc -l` 口径，不含本 README）。这些数字会随正文增删变化；每个数字旁边的命令就是它的当前值来源：
+
+| 目录 | 文件数 | 行数 |
+| --- | --- | --- |
+| `docs/` | 3 | 1,043 |
+| `guides/` | 3 | 1,303 |
+| `case-studies/` | 4 | 4,481 |
+| `prompts/` | 3 | 635 |
+| 合计 | 13 | 7,462 |
+
+这 14 个脚本零第三方依赖：全部 `require` 只有 Node 内置的 `fs` 和 `path`，仓库里没有 `package.json`，也没有 `node_modules`。克隆后直接 `node tools/asar-peek.cjs <app.asar> package.json` 就能跑：
+
+```bash
+grep -rhoE "require\(['\"][^'\"]+['\"]\)" tools/*.cjs \
+  | grep -vE "\('(node:)?(fs|path|crypto|buffer|util|zlib|os|assert)'\)" | wc -l    # → 0
+```
+
+发布相关的内部文件不在仓库里，找不到不是丢了。
+
+## 这本手册会过期，也有些事它做不到
+
+- **会过期。** 全部内容基于 REA 6.5.0，而 REA 更新很快。行为漂移不是意外，是常态，所以现在复跑对不上，正常。
+- **`rea capabilities` 的输出本身不完整**，本手册据它写的"哪些可用"也跟着不完整。
+- **567 MB 那个案例只完成了一部分。** 分析到 3,757 / 16,197 个源文件就停了；它证明的是"超大目标怎么降级处理"，不是"什么规模都能跑通"。
+- **原生二进制反编译不在本手册范围内。** 那条路要 Ghidra / Hopper / IDA，而且平台限制不少：Windows 上 Hopper 不可用、Ghidra 仅实验性支持、固件等类型多为 Linux-only。
+- **`tools/` 的脚本不是产品。** 都是"够用就好"的自写解析器，最长的一个 261 行（`wc -l tools/*.cjs | sort -n | tail -2` 可复算），没有测试、没有参数校验，读得懂、可以改，但别当库用。
+- **几百 MB 的 evidence 不是这些脚本处理的**，走 `jq` 流式投影。上面那条 512 MiB 的墙，是 Node/V8 的限制，不是 REA 的限制。
+- **不含授权机制分析。** PCL2 那份报告里有一节标着"（略）"，内容是刻意移除的；本手册也**不承诺每个仓库外引用都能点开**，只承诺仓库内的相对链接由 `node verify-handbook.mjs` 全部验过。
+
+这是一本会过期的手册，不是一份 API 参考。它的价值在"某个具体版本上、某个具体目标、我们真的撞到过"，而这三样都会在下一个版本失效。所以每条都配了复算命令，命令跑出来的数字比我们的结论更长久。
+
+## 反馈与贡献
+
+什么算 bug：你在同一版本（6.5.0 或更新版本上已核对过行为描述）上跑出与本手册不同的行为，且能给出命令与输出。什么算提案：缺的目标类型、缺的平台、缺的症状条目。
+
+提之前请先跑这两条，它们能一次扫出死链、敏感残留和结构缺件：
+
+```bash
+node verify-handbook.mjs
+git ls-files docs guides case-studies prompts | xargs cat | wc -l    # 正文体量基线
+```
+
+本手册的正文不接收外部提交的代码副本、密钥或可复现的攻击步骤。上面那条扫描命令会拒绝这类内容。权利方对内容有异议，请走 [issue](https://github.com/sqkl520/rea-handbook/issues)。
+
+## License
 
 - **本仓库**（手册、提示词、脚本、案例研究）：[MIT](LICENSE) © REA Handbook contributors。
 - **REA**：是 [morluto/rea](https://github.com/morluto/rea) 的 MIT 项目（Copyright (c) morluto）。本手册引用其公开文档与行为描述，遵循其 MIT 许可。
+
+MIT — 随便用，随便改。本仓库的 MIT 许可不涵盖任何商标的使用。
 
 ## 致谢
 
@@ -88,4 +314,11 @@ rea analyze-javascript-application /path/to/app.asar --json    # 静态分析 El
 - REA 官方文档与 [rea.tools](https://rea.tools/)——本手册的事实基线。
 - 三个案例的分析对象 PCL2、ChatGPT 桌面版、OpenCode。
 
-完整的归属与第三方工具清单见 [NOTICE.md](NOTICE.md)。
+<div align="center">
+
+**官方文档讲 REA 有什么命令。**<br>
+**这本手册讲你第一次会在哪一步撞上没写的事。**
+
+*没列出来的，多半照样能跑。*
+
+</div>
