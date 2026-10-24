@@ -5,6 +5,7 @@
 // 不能携带它要扫描的敏感字面值（首次发布时曾因此漏网）。
 
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { join, dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -353,6 +354,80 @@ if (anchorChecked === 0) {
   info('没有带 #片段 的链接需要核对');
 } else if (anchorDead === 0) {
   ok(`${anchorChecked} 个锚点全部命中真实标题${crossFileAnchors ? `（其中 ${crossFileAnchors} 个跨文件）` : ''}`);
+}
+
+// ── 9. 自述统计 ──
+// README 的「仓库结构」节把入库文件数、各目录行数写成了"跑这条命令就能得到"，
+// 但那些反引号里的命令 verify 抓不到。加 evidence/ 时这几个数就漂过一次
+// （case-studies 从 4 个文件变成 7 个，合计 13 → 16）。
+// 这里只认 README 里形如 `| \`dir/\` | 3 | 1,043 |` 的表格行和注释里的 → N。
+console.log('\n【9】README 自述统计');
+{
+  const readme = readFileSync(join(ROOT, 'README.md'), 'utf8');
+  // git 的 pathspec `dir/*.md` 会跨子目录命中，所以这里也要递归。
+  const md = (dir) => {
+    const p = join(ROOT, dir);
+    if (!existsSync(p)) return null;
+    return walk(p).filter((f) => f.endsWith('.md')).sort();
+  };
+  const lineCount = (files) => files.reduce((n, f) => n + readFileSync(f, 'utf8').split('\n').length - 1, 0);
+  const num = (s) => Number(s.replace(/,/g, ''));
+
+  const claims = [];
+  const rowRe = /^\|\s*`([a-z-]+)\/`\s*\|\s*([\d,]+)\s*\|\s*([\d,]+)\s*\|/gm;
+  let totalFiles = 0;
+  let totalLines = 0;
+  for (const m of readme.matchAll(rowRe)) {
+    const [, dir, f, l] = m;
+    const list = md(dir);
+    if (!list) { warn(`README 列了 ${dir}/ 的统计，但仓库里没有这个目录`); continue; }
+    totalFiles += list.length;
+    totalLines += lineCount(list);
+    claims.push([`${dir}/ 文件数`, num(f), list.length]);
+    claims.push([`${dir}/ 行数`, num(l), lineCount(list)]);
+  }
+  // 合计行
+  const totRe = /^\|\s*合计\s*\|\s*([\d,]+)\s*\|\s*([\d,]+)\s*\|/m;
+  const tot = readme.match(totRe);
+  if (claims.length && tot) {
+    claims.push(['合计文件数', num(tot[1]), totalFiles]);
+    claims.push(['合计行数', num(tot[2]), totalLines]);
+  }
+  // git ls-files 那三条注释里的 → N。README 承诺的是"跑这条命令得到这个数"，
+  // 所以这里就真去跑 git——从 zip 解压出来的副本没有 .git，跳过该项。
+  let tracked = null;
+  try {
+    tracked = execFileSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8' })
+      .split('\n')
+      .filter(Boolean);
+  } catch {
+    info('不在 git 工作区内，跳过 `git ls-files` 计数核对');
+  }
+  if (tracked) {
+    const fnRe = /git ls-files(?: ([^\n#]+?))?\s*\|\s*wc -l\s*#\s*→\s*([\d,]+)/g;
+    const match = (glob) => {
+      const g = (glob || '').trim().replace(/^'|'$/g, '');
+      if (!g) return tracked.length;
+      if (g === '*.md') return tracked.filter((f) => f.endsWith('.md')).length;
+      if (g === 'tools/*.cjs') return tracked.filter((f) => /^tools\/[^/]+\.cjs$/.test(f)).length;
+      return null;
+    };
+    for (const m of readme.matchAll(fnRe)) {
+      const [, glob, n] = m;
+      const actual = match(glob);
+      if (actual === null) continue;
+      claims.push([`git ls-files ${(glob || '').trim()} 条数`, num(n), actual]);
+    }
+  }
+
+  let bad = 0;
+  for (const [name, declared, actual] of claims) {
+    if (declared !== actual) {
+      warn(`README 自述「${name}」= ${declared}，实际 ${actual}`);
+      bad++;
+    }
+  }
+  if (!bad) ok(`${claims.length} 条 README 自述统计与实际一致`);
 }
 
 console.log(`\n${problems === 0 ? '✅ 全部通过' : `⚠️  发现 ${problems} 个问题`}\n`);
