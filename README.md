@@ -15,7 +15,7 @@
 REA 是一个本地跑的逆向工程工具：一个 CLI 加一个 MCP server，把“读二进制、读打包产物”
 变成结构化证据喂给 AI agent。它不执行目标程序，静态读完，给你一张带出处的图。
 
-这是它读一个 Electron 应用主程序的真实输出（231 MB 的 `OpenCode.exe`，9 个安全开关，一次调用；本机实测 7–9 秒）：
+这是它读一个 Electron 应用主程序的真实输出（231 MB 的 `OpenCode.exe`，9 个安全开关，一次调用；本机实测 7–9 秒）。看 `fuses[9]` 那几行：`raw_byte` 49 表示开、48 表示关；`complete: true` 表示一次读完，不用二次调用。
 
 ```text
 $ rea inspect-electron-fuses OpenCode.exe
@@ -35,7 +35,7 @@ normalized_result:
   complete: true
 ```
 
-官方文档列了命令，没写第一次会在哪一步卡住。
+官方文档按功能组织，不按“第一次会卡在哪”组织。
 
 567 MB 的归档跑完，产出 570 MB 的 evidence。照官方追溯示例用 `readFileSync` 去读它，
 直接崩：
@@ -44,8 +44,10 @@ normalized_result:
 Error: Cannot create a string longer than 0x1fffffe8 characters
 ```
 
-官方材料里同时放着对的做法（`jq -c` 流式投影）和会崩的做法，没告诉你哪条路是坑。
+官方材料里同时放着对的做法（`jq -c` 流式投影）和会崩的做法，但两个示例都没标各自适用的体量，多大的 evidence 该走哪条要自己拼。
 本手册补的就是这些：14 种症状、11 类目标、21 处【实测】标注，每个结构数旁边都留了能跑出它的命令。
+
+有两件事别混：**读这本手册**只要 Git，**跑手册里的命令**才要装 REA。
 
 ```bash
 git clone https://github.com/sqkl520/rea-handbook.git    # 读这本手册（本仓库）
@@ -72,7 +74,7 @@ Error: Cannot create a string longer than 0x1fffffe8 characters
 code: 'ERR_STRING_TOO_LONG'
 ```
 
-146 MB 的 asar 产出 354 MB evidence（能读通），567 MB 的 asar 产出 570,218,269 字节（必崩）。同一套脚本换个目标就崩，最容易被当成偶发。
+146 MB 的 asar 产出 354 MB evidence（能读通），567 MB 的 asar 产出 570,218,269 字节——这份用 `readFileSync` 整份读入必定崩，因为它超了 V8 单个字符串的上限。同一套脚本换个目标就崩，最容易被当成偶发。
 
 ```bash
 grep -c '^## 症状' guides/troubleshooting.md    # → 14 种症状条目
@@ -108,11 +110,11 @@ wc -l < case-studies/pcl2.md                          # → 3635 行，单份主
 grep -n "枚举全表" case-studies/pcl2.md                 # → 第 1958 行，46 行完整枚举表
 ```
 
-三个案例的规模跨两个数量级：5.5 MB 的单文件 .NET 应用、146 MB 的 Electron 归档、567 MB 的巨型归档。最后一份只完成了一部分：分析到 3,757 / 16,197 个源文件时父进程结果容量耗尽，报告里原样标注 `status: partial`，不假装成功。
+三个案例的规模跨两个数量级：5.5 MB 的单文件 .NET 应用、146 MB 的 Electron 归档、567 MB 的巨型归档。最后一份只完成了一部分：分析到 3,757 / 16,197 个源文件时父进程结果容量耗尽，报告原样写了“部分完成 + 容量耗尽”，不假装成功。
 
 ## 装上就能用
 
-这本手册有两条路径，别混：**读手册**只需要 Git，**跑通手册里的命令**才需要装 REA。
+读手册的三条路先列在这，装 REA 的两条在后面。
 
 **读手册**（三选一）
 
@@ -130,9 +132,9 @@ npm install --global rea-agents   # 或：只装命令行，得到 rea 命令
 npx -y rea-agents <命令>          # 或：不装，每次一次性运行
 ```
 
-装完自检两条：`rea doctor` 看本机哪些能力可用，`node verify-handbook.mjs` 看手册本身有没有坏。
+装完先跑 `rea doctor`，确认本机哪些能力可用。`healthy: false` 很常见（见下文「手册里几个最有价值的发现」末尾），看具体哪一项失败，别看总布尔值。`node verify-handbook.mjs` 是另一回事——它查的是这份手册本身有没有坏，不是查你的安装。
 
-前置是 Node.js 22.19+ / 24.11+ / 26+（不支持 23、25 及 prerelease）。大部分能力零依赖：静态分析 JavaScript/Electron、Go/Rust 二进制、.NET 程序集、PE 资源、Electron fuses 等，只要 Node.js；需要 Ghidra/Hopper/IDA 的只有原生二进制反编译一类。SQLite 另有更严的门槛，见下文「手册里几个最有价值的发现」。
+前置是 Node.js 22.19+ / 24.11+ / 26+（不支持 23、25 及 prerelease），这是 REA 的 `package.json` 里 `engines` 字段原文：`^22.19.0 || ^24.11.0 || >=26.0.0`。大部分能力零依赖：静态分析 JavaScript/Electron、Go/Rust 二进制、.NET 程序集、PE 资源、Electron fuses 等，只要 Node.js；需要 Ghidra/Hopper/IDA 的只有原生二进制反编译一类。SQLite 另有更严的门槛，见下文「手册里几个最有价值的发现」。
 
 然后在 agent 里直接说话：
 
@@ -175,7 +177,7 @@ git ls-files 'tools/*.cjs' | xargs wc -l | tail -1                  # → 1146 �
 | --- | --- | --- |
 | 【官方】 | 官方文档与契约写明的 | 8 处 |
 | 【实测】 | 我们在真实目标上跑出来的 | 21 处 |
-| 【我们的发现】 | 官方没写、甚至与官方不符的 | 1 处 |
+| 【我们的发现】 | 官方未展开、或表述分散在各篇的 | 1 处 |
 
 ```bash
 # 排除文件头的图例行（第 7 行同时定义了【实测】和【官方】），只数正文里的实例
@@ -190,17 +192,17 @@ grep -c "【我们的发现】" guides/by-target-type.md                   # →
 
 **“复算”这个词要说清楚指的是什么**：正文里每个**结构数**（文件数、行数、标注数、症状条数）旁边都有能跑出它的命令；**实测数**（节点数、边数、字节数）来自分析当时的原始输出——其中案例三的那些，原始摘要就在仓库里（[`case-studies/evidence/`](case-studies/evidence/BASELINE.md)，4.8 KB），你可以直接读出来核对。完整图谱（354 MB）不在仓库里，想复现得拿同样的目标重跑。给不出命令的结构数我们不写；实测数一律标出它出自哪一行。
 
-五条撞得到的上限。这一列不是“官方漏了”，而是**官方写了但没告诉你撞上之后会怎样**：
+五条撞得到的上限。这一列记的是“官方写给谁看、以及写得有多分散”：
 
 | 上限 | 数值 | 什么时候撞上 | 官方怎么说的 |
 | --- | --- | --- | --- |
 | V8 单字符串硬墙 | `0x1fffffe8` = 512 MiB | `readFileSync` 读几百 MB 的 evidence | 提了 "Node's single-string limit"（3 篇 docs），不给字节数，也没说自己的追溯示例正好会撞上 |
 | .NET 表示预算 | 64 MiB（`67108864`） | `inspect-managed-members` 全量提取 | 写了预算、也给了 `--type` 出路，但没说全量失败时你拿不到类型清单（而拿不到清单就填不出 `--type`） |
 | semantic 层节点上限 | 默认 100,000，可调到 1,000,000 | 大图谱的 semantic 层，`status: partial` | 写了默认值与 `--max-semantic-nodes` 的调节范围（1–1,000,000）。但**这是可调默认值，不是硬墙** |
-| 父进程结果容量 | 视目标而定 | 567 MB 归档停在 3,757 / 16,197 个源文件 | 给了 `--max-heap-mb` / `--analysis-timeout-ms`，但没给“中止时退回 partial 而不是报错”的实操预期 |
+| 父进程结果容量 | 视目标而定 | 567 MB 归档停在 3,757 / 16,197 个源文件 | 写了资源耗尽时不终止进程、已完成事实保留、`partial coverage`；但没给“这个体量大概停在哪”的量级预期 |
 | 退出码语义 | 0 | 64 MiB 预算失败时退出码仍是 0，`coverage.status = "unavailable"` | 有退出码表，也提过 "result may include partial evidence"。但两句话隔着好几页 |
 
-64 MiB 那条值得单说：文件只有 5.5 MB，全量成员提取照样失败。`coverage.status = "unavailable"`，`detail` 里写着超出 `67108864` 字节。这 64 MiB 不是文件大小上限，是一条独立的表示预算。同一篇还给了反向反例：3.4 MB 的 `System.dll` 也会撑爆它。
+64 MiB 那条值得单说：文件只有 5.5 MB，全量成员提取照样失败。`coverage.status = "unavailable"`，`detail` 里写着超出 `67108864` 字节。这 64 MiB 不是文件大小上限，是一条独立的表示预算。反向反例也测过：3.4 MB 的 `System.dll`（`Microsoft.NET/Framework64/v4.0.30319`，sha256 `4ad37405…`）同样撑爆它。
 
 复算：`grep -n "67108864" guides/by-target-type.md` → 第 146 行；`grep -n "67108864" guides/troubleshooting.md` → 112 与 120 行。
 
@@ -209,7 +211,7 @@ grep -c "【我们的发现】" guides/by-target-type.md                   # →
 ```bash
 grep -n "100,000 节点" case-studies/README.md        # → 33 与 212 行（semantic 上限）
 grep -n "3,757" case-studies/README.md                # → 139 行（567 MB 停在哪）
-grep -n "570,218,269" guides/troubleshooting.md       # → 46 行（必崩的那个体量）
+grep -n "570,218,269" guides/troubleshooting.md       # → 46 行（整份读入必崩的那个体量）
 ```
 
 （5.5 MB 那份是 PCL2 的数字，锁在它的某个版本上；它自带更新机制，你复跑时类型数、方法数对不上是正常的，`case-studies/pcl2.md` 开头的“可复现性说明”讲的就是这件事。）
@@ -220,7 +222,7 @@ grep -n "570,218,269" guides/troubleshooting.md       # → 46 行（必崩的�
 - **`--filter-output` 写错时多数静默返回空**（字段名笔误、路径不存在），但未闭合的 `[` 切片例外：会报 `INVALID_OUTPUT_FILTER`（未闭合的 `]` 仍静默）。
 - **`trace-application-feature` 的 seed kind：拿不准就用 `string`**。官方把 `channel` 列为合法取值。它并非不能用：源码里 `channel` 会在 `kind === "ipc-channel"` 的节点上匹配 `.label` / `.channel` / `.key`；但实际图谱里通道名常挂在 `javascript-asset` 节点的 `static_analysis.electron.ipc[].channel` 下，那时 `channel` 搜不到，`string` 能。实测 `kill-sidecar`：`channel` 返回 no-match，`string` 命中 2 个。
 - **大 evidence 有 512 MiB 的 Node 硬墙**。V8 单个字符串长度上限约 512 MiB，超限即 `ERR_STRING_TOO_LONG`。几百 MB 的 evidence 投影要用 `jq` 流式处理，`fs.readFileSync` 整份读入会直接崩。
-- **`rea capabilities` 不是完整能力清单**。它只报告需要 provider（Ghidra 等）的操作，零依赖能力不在输出里。“没列”不等于“不能用”。
+- **`rea capabilities` 不是完整能力清单**。它只覆盖按 provider 建模的操作；静态 JS/Electron、Go/Rust、PE 资源、Electron fuses 这些不在输出里。“没列”不等于“不能用”。
 
 第 2、4、5 条在仓库内有原句可点，三条命令定位到行：
 
@@ -232,7 +234,7 @@ grep -rn "不是完整能力清单" docs/ guides/
 
 第 1、3 条要真复现得装 REA 并备齐条件（Node 24.11–24.14 / 一个带通道的 Electron 归档），仓库内的引用位置是 `docs/01-getting-started.md` §2.2 与 `guides/troubleshooting.md` §trace no-match。
 
-顺带一条最容易误判的：装完跑 `rea doctor`，`healthy` 是 `false` 是**正常的**。它把“没配 Ghidra/Hopper”也算进总分，而零依赖功能全部可用。判断能不能干活，看具体哪一项失败，别看那个总布尔值（详见 `docs/01-getting-started.md` §4.2）。
+顺带一条最容易误判的：装完跑 `rea doctor`，`healthy: false` 很常见——只要本机没有任何一个分析引擎可用（Ghidra/Hopper 都没配），总分就是 false，哪怕零依赖功能全部能用。未配置的 provider 本身不扣分。判断能不能干活，看具体哪一项失败，别看那个总布尔值（详见 `docs/01-getting-started.md` §4.2）。
 
 ## 本手册和官方文档的关系
 
@@ -332,7 +334,7 @@ node verify-handbook.mjs        # 【1】链接 【2】合规 【3】占位符 �
 - **原生二进制反编译不在本手册范围内**。那条路要 Ghidra / Hopper / IDA，而且平台限制不少：Windows 上 Hopper 不可用、Ghidra 仅实验性支持、固件等类型多为 Linux-only。
 - **`tools/` 的脚本不是产品**。都是“够用就好”的自写解析器，最长的一个 261 行（`wc -l tools/*.cjs | sort -n | tail -2` 的倒数第二行就是这个数），没有测试、没有参数校验，读得懂、可以改，但别当库用。
 - **几百 MB 的 evidence 不是这些脚本处理的**，走 `jq` 流式投影。上面那条 512 MiB 的墙，是 Node/V8 的限制，不是 REA 的限制。
-- **不含授权机制分析**。PCL2 那份报告里有一节标着“（略）”，内容是刻意移除的；本手册也**不承诺每个仓库外引用都能点开**，只承诺仓库内的相对链接由 `node verify-handbook.mjs` 全部验过。
+- **不涉及账号与捐赠回馈机制。** PCL2 那份报告里有一节标着“（略）”，内容是刻意移除的；本手册也**不承诺每个仓库外引用都能点开**，只承诺仓库内的相对链接由 `node verify-handbook.mjs` 全部验过。
 
 这是一本会过期的手册，不是一份 API 参考。它的价值在“某个具体版本上、某个具体目标、我们真的撞到过”，而这三样都会在下一个版本失效。所以每条都配了复算命令，命令跑出来的数字比我们的结论更长久。
 
@@ -365,6 +367,6 @@ MIT：随便用，随便改。本仓库的 MIT 许可不涵盖任何商标的使
 <div align="center">
 
 **官方文档讲 REA 有什么命令。**<br>
-**本手册讲你第一次会在哪一步卡住，而文档没写。**
+**本手册讲第一次会在哪一步卡住。**
 
 </div>
