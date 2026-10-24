@@ -15,6 +15,14 @@ view.json
 *.us-heap.txt
 _us-strings.txt
 
+# 例外：这几份是手稿的"一手证据"，刻意入库（几 KB，已脱敏）。
+# 没有它们，案例里的数字只有我们的记账，读者没法核对。
+# 注意顺序：先重新忽略整个目录，再逐个放行——否则 ! 会让目录里的任何文件都被跟踪。
+case-studies/evidence/*
+!case-studies/evidence/trace-summary.json
+!case-studies/evidence/trace-wsl-summary.json
+!case-studies/evidence/BASELINE.md
+
 # 系统文件
 .DS_Store
 Thumbs.db

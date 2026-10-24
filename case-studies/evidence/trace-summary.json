@@ -1,0 +1,133 @@
+{
+  "trace_id": "jatr_f11274e4c170962b1646ca517c285c6c7d39cf0e10afa5d4068fdb62b0b8aac8",
+  "seed": {
+    "kind": "string",
+    "value": "kill-sidecar",
+    "match": null,
+    "case_sensitive": false
+  },
+  "summary": {
+    "matched_seeds": 2,
+    "traced_nodes": 27278,
+    "traced_edges": 32977,
+    "terminal_paths": 7823,
+    "native_handoffs": 5,
+    "observed_facts": 46739,
+    "inferred_facts": 11695,
+    "unknown_facts": 0,
+    "unavailable_facts": 7811
+  },
+  "coverage": {
+    "status": "partial",
+    "source_graph_status": "partial",
+    "total_seed_matches": 2
+  },
+  "seed_matches": [
+    {
+      "node_id": "jag_node_52110d0d6e04b741b4048500c2e53abaf10e316336791c0d8e6852d2d0e34714",
+      "kind": "javascript-asset",
+      "basis": "property",
+      "field": "observations[0].properties.static_analysis.electron.call_paths[20].channel"
+    },
+    {
+      "node_id": "jag_node_91166ef4d1b432343ee440a25622fd4697ae56bf81c0019a5276e6bb8ed6ec94",
+      "kind": "javascript-asset",
+      "basis": "property",
+      "field": "observations[0].properties.static_analysis.electron.ipc[0].channel"
+    }
+  ],
+  "native_handoffs": [
+    {
+      "native_node_id": "jag_node_1a51f381ca8d846b5e7067a14718b2e110dde9e7e73230ad0072edb5ca00b0c0",
+      "artifact_sha256": "a8199cf7b6c5102267a5889f80321a4cc92e631d7504c474d32a35b4d440f315",
+      "artifact_path": "node_modules/@parcel/watcher-win32-x64/watcher.node",
+      "export_node_ids": [],
+      "requested_exports": [],
+      "status": "requires-provider-analysis",
+      "providers": [],
+      "evidence_ids": [],
+      "recommended_tools": [
+        "open_binary",
+        "binary_overview",
+        "search_procedures",
+        "analyze_function",
+        "xrefs"
+      ]
+    },
+    {
+      "native_node_id": "jag_node_2491555553e78e7d50f03e20c458e9c1cc6fbd2a252dbae54df0198265f2dc71",
+      "artifact_sha256": "4b443e5347883c47220e26eed0d03d35fce6bea8d30bb0d577541202783618e2",
+      "artifact_path": "node_modules/@lydell/node-pty-win32-x64/prebuilds/win32-x64/conpty_console_list.node",
+      "export_node_ids": [],
+      "requested_exports": [],
+      "status": "requires-provider-analysis",
+      "providers": [],
+      "evidence_ids": [],
+      "recommended_tools": [
+        "open_binary",
+        "binary_overview",
+        "search_procedures",
+        "analyze_function",
+        "xrefs"
+      ]
+    },
+    {
+      "native_node_id": "jag_node_3ea73a9cab828b2e7fd27ace8f04d9e18ff559fe7576536507e0d7746ff89c09",
+      "artifact_sha256": "6958541c624784dfcebfc4f3c360c57f71cfeedd0530c2393845061729081a08",
+      "artifact_path": "node_modules/@msgpackr-extract/msgpackr-extract-win32-x64/node.napi.node",
+      "export_node_ids": [],
+      "requested_exports": [],
+      "status": "requires-provider-analysis",
+      "providers": [],
+      "evidence_ids": [],
+      "recommended_tools": [
+        "open_binary",
+        "binary_overview",
+        "search_procedures",
+        "analyze_function",
+        "xrefs"
+      ]
+    },
+    {
+      "native_node_id": "jag_node_53a3b55aa4a6a4b04dad9dccdb11bf090cac94a81f1a574036512b03be5afc8a",
+      "artifact_sha256": "2d1fb89aa74b692ad026807e78f90d970ef4e4b5b4b0254f94854f0f3f442306",
+      "artifact_path": "node_modules/@lydell/node-pty-win32-x64/prebuilds/win32-x64/conpty.node",
+      "export_node_ids": [],
+      "requested_exports": [],
+      "status": "requires-provider-analysis",
+      "providers": [],
+      "evidence_ids": [],
+      "recommended_tools": [
+        "open_binary",
+        "binary_overview",
+        "search_procedures",
+        "analyze_function",
+        "xrefs"
+      ]
+    },
+    {
+      "native_node_id": "jag_node_b080e9375401b2614551c57562e8dfad74337c9d1f1252e2df12015bfd643fa4",
+      "artifact_sha256": "300b188fb8c997214cb65bf1b00729da293176c7d57035e40c2f432ea384dd89",
+      "artifact_path": "node_modules/@msgpackr-extract/msgpackr-extract-win32-x64/node.abi115.node",
+      "export_node_ids": [],
+      "requested_exports": [],
+      "status": "requires-provider-analysis",
+      "providers": [],
+      "evidence_ids": [],
+      "recommended_tools": [
+        "open_binary",
+        "binary_overview",
+        "search_procedures",
+        "analyze_function",
+        "xrefs"
+      ]
+    }
+  ],
+  "limitations": [
+    "A trace reports graph relationships, not proof that code executed or that a feature is reachable in every state.",
+    "Native handoffs never open a binary or invoke a provider automatically; snapshot reuse remains provider/profile/target exact.",
+    "Static, native, passive-runtime, inferred, and unknown facts retain their original authority in the returned graph.",
+    "The source application graph is incomplete; unmatched seeds and frontiers remain unknown."
+  ],
+  "evidence_id": "ev_73720c5273da17e410550dece6d2ca7848b4424223b340afe8e79904f0f9d918"
+}

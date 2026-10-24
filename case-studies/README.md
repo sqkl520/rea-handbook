@@ -211,7 +211,9 @@
 **用了什么**：REA 静态应用重建（**146 MB 应用图谱完整产出**——"中等规模目标 REA 最合适"的实测基准点；
 注意 semantic 层达 100,000 节点上限后截断，`status: partial`）
 + 功能追踪（`trace-application-feature`）+ 3 个自写脚本
-**产出**：分析报告 + 一份 **4.8 KB 的追踪摘要**（结论级资产）
+**产出**：分析报告 + 一份 **4.8 KB 的追踪摘要**（结论级资产）——
+摘要本身在仓库里：[`evidence/trace-summary.json`](evidence/trace-summary.json)，
+上面那些数字可以直接从它读出来（`node verify-handbook.mjs` 的【7】节会核对两边是否一致）
 
 **最值得说的 5 个发现**：
 

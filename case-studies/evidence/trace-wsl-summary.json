@@ -1,0 +1,61 @@
+{
+  "seed": {
+    "kind": "string",
+    "value": "wsl-servers",
+    "match": null,
+    "case_sensitive": false
+  },
+  "summary": {
+    "matched_seeds": 2,
+    "traced_nodes": 27278,
+    "traced_edges": 32977,
+    "terminal_paths": 7823,
+    "native_handoffs": 5,
+    "observed_facts": 46739,
+    "inferred_facts": 11695,
+    "unknown_facts": 0,
+    "unavailable_facts": 7811
+  },
+  "coverage": {
+    "status": "partial",
+    "source_graph_status": "partial",
+    "total_seed_matches": 2
+  },
+  "seed_matches": [
+    {
+      "node_id": "jag_node_52110d0d6e04b741b4048500c2e53abaf10e316336791c0d8e6852d2d0e34714",
+      "kind": "javascript-asset",
+      "basis": "property",
+      "field": "observations[0].properties.static_analysis.electron.call_paths[54].channel"
+    },
+    {
+      "node_id": "jag_node_91166ef4d1b432343ee440a25622fd4697ae56bf81c0019a5276e6bb8ed6ec94",
+      "kind": "javascript-asset",
+      "basis": "property",
+      "field": "observations[0].properties.static_analysis.electron.ipc[54].channel"
+    }
+  ],
+  "native_handoffs": [
+    {
+      "artifact_path": "node_modules/@parcel/watcher-win32-x64/watcher.node",
+      "status": "requires-provider-analysis"
+    },
+    {
+      "artifact_path": "node_modules/@lydell/node-pty-win32-x64/prebuilds/win32-x64/conpty_console_list.node",
+      "status": "requires-provider-analysis"
+    },
+    {
+      "artifact_path": "node_modules/@msgpackr-extract/msgpackr-extract-win32-x64/node.napi.node",
+      "status": "requires-provider-analysis"
+    },
+    {
+      "artifact_path": "node_modules/@lydell/node-pty-win32-x64/prebuilds/win32-x64/conpty.node",
+      "status": "requires-provider-analysis"
+    },
+    {
+      "artifact_path": "node_modules/@msgpackr-extract/msgpackr-extract-win32-x64/node.abi115.node",
+      "status": "requires-provider-analysis"
+    }
+  ],
+  "evidence_id": "ev_5cc05ada514068c0a021bb8515e171bfe51a430b0f4d5fc56a5105549f40161c"
+}

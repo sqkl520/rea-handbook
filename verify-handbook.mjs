@@ -196,5 +196,60 @@ if (claimsFailed === 0) {
   ok(`${claimsChecked} 条行号断言全部命中（另有无行号的 grep 命令已核对非空）`);
 }
 
+// ── 7. 一手证据核对 ──
+// case-studies/evidence/ 里的摘要文件是案例数字的原始出处。文档改了数字，
+// 或者证据被重新生成过，两边就会不一致。这里逐条比对：文档里写的每个
+// "某数字"必须能在证据文件里找到同值。
+console.log('\n【7】一手证据');
+const EVIDENCE = join(ROOT, 'case-studies/evidence');
+// 每条：[文档里的字面量, 证据文件, 从证据里取值的路径, 说明]
+const EVIDENCE_CLAIMS = [
+  ['27,278', 'trace-summary.json', (d) => d.summary.traced_nodes, 'traced_nodes'],
+  ['32,977', 'trace-summary.json', (d) => d.summary.traced_edges, 'traced_edges'],
+  ['7,823', 'trace-summary.json', (d) => d.summary.terminal_paths, 'terminal_paths'],
+];
+let evidenceChecked = 0;
+let evidenceFailed = 0;
+if (!existsSync(EVIDENCE)) {
+  warn('缺少 case-studies/evidence/ —— 案例数字将没有原始出处可核对');
+} else {
+  for (const [literal, file, get, label] of EVIDENCE_CLAIMS) {
+    const p = join(EVIDENCE, file);
+    if (!existsSync(p)) {
+      warn(`证据文件缺失: case-studies/evidence/${file}`);
+      evidenceFailed++;
+      continue;
+    }
+    let data;
+    try {
+      data = JSON.parse(readFileSync(p, 'utf8'));
+    } catch {
+      warn(`证据文件不是合法 JSON: ${file}`);
+      evidenceFailed++;
+      continue;
+    }
+    const actual = get(data);
+    evidenceChecked++;
+    if (actual === undefined) {
+      warn(`${file} 里取不到 ${label}`);
+      evidenceFailed++;
+      continue;
+    }
+    // 文档里带千分位逗号，证据里是数字：比对数值
+    const declared = Number(literal.replace(/,/g, ''));
+    if (declared !== actual) {
+      warn(`${label} 不一致：文档写 ${literal}，证据里是 ${actual}`);
+      evidenceFailed++;
+    }
+  }
+  // 证据在文档里被引用过吗（防止文件放进来了却没人链）
+  const caseMd = readFileSync(join(ROOT, 'case-studies/README.md'), 'utf8');
+  const linked = /evidence\//.test(caseMd);
+  if (evidenceChecked > 0 && evidenceFailed === 0) {
+    ok(`${evidenceChecked} 条案例数字与证据文件一致${linked ? '' : '（注意：case-studies/README 未链接到 evidence/）'}`);
+  }
+  if (!linked) info('case-studies/README.md 里没有指向 evidence/ 的链接');
+}
+
 console.log(`\n${problems === 0 ? '✅ 全部通过' : `⚠️  发现 ${problems} 个问题`}\n`);
 process.exit(problems === 0 ? 0 : 1);
