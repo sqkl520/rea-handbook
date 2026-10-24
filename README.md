@@ -2,7 +2,7 @@
 
 # REA Handbook
 
-> *「`rea capabilities` 没列的，不代表不能用。」*
+> *「这不是 REA 的说明书，是一份踩坑记录。」*
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-f4c430?style=flat-square)](LICENSE)
 [![Unofficial handbook](https://img.shields.io/badge/REA-Unofficial%20handbook-d73a49?style=flat-square)](NOTICE.md)
@@ -54,7 +54,7 @@ git clone https://github.com/sqkl520/rea-handbook.git    # 读这本手册（本
 npx rea-agents setup                                     # 跑通手册里的命令（装的是 REA，不是本仓库）
 ```
 
-[看效果](#先看效果三条断言每条旁边就是复算命令) · [装上就能用](#装上就能用) · [机制](#机制64-mib-预算与-512-mib-硬墙) · [你带着什么问题来](#你带着什么问题来就翻哪一篇) · [局限](#这本手册会过期也有些事它做不到)
+[看效果](#凭什么信效果与机制每条断言旁边就是复算命令) · [装上就能用](#装上就能用) · [机制](#五条撞得到的上限) · [你带着什么问题来](#你带着什么问题来就翻哪一篇) · [局限](#这本手册会过期也有些事它做不到)
 
 </div>
 
@@ -65,7 +65,87 @@ npx rea-agents setup                                     # 跑通手册里的命
 > 与 REA 项目**无隶属、背书或赞助关系**。**REA 是 morluto 的 MIT 项目：<https://github.com/morluto/rea>。**
 > 本仓库中的教程、提示词与脚本为原创内容；对 REA 的使用遵循其 MIT 许可。
 
-## 先看效果：三条断言，每条旁边就是复算命令
+## 装上就能用
+
+读手册的三条路先列在这，装 REA 的两条在后面。
+
+**读手册**（三选一）
+
+| 方式 | 做法 | 需要什么 |
+| --- | --- | --- |
+| 克隆 | `git clone https://github.com/sqkl520/rea-handbook.git` | 只要 Git |
+| 直接看 | 在 GitHub 上翻 `docs/` `guides/` `case-studies/` | 只要浏览器 |
+| 只用脚本 | `node tools/asar-peek.cjs <app.asar> package.json` | Node.js，无安装步骤 |
+
+**跑手册里的命令**（三选一）
+
+```bash
+npx rea-agents setup              # 交互式：把 REA 注册到你的 AI agent（Claude Code / Codex / Cursor 等）
+npm install --global rea-agents   # 或：只装命令行，得到 rea 命令
+npx -y rea-agents <命令>          # 或：不装，每次一次性运行
+```
+
+装完先跑 `rea doctor`，确认本机哪些能力可用。`healthy: false` 很常见，原因和怎么判断见下文「手册里几个最有价值的发现」的最后一条。`node verify-handbook.mjs` 是另一回事——它查的是这份手册本身有没有坏，不是查你的安装。
+
+前置是 Node.js 22.19+ / 24.11+ / 26+（不支持 23、25 及 prerelease），这是 REA 的 `package.json` 里 `engines` 字段原文：`^22.19.0 || ^24.11.0 || >=26.0.0`。大部分能力零依赖：静态分析 JavaScript/Electron、Go/Rust 二进制、.NET 程序集、PE 资源、Electron fuses 等，只要 Node.js；需要 Ghidra/Hopper/IDA 的只有原生二进制反编译一类。SQLite 另有更严的门槛，见下文「手册里几个最有价值的发现」。
+
+然后在 agent 里直接说话：
+
+```text
+分析 /path/to/electron-app.asar，先给我图谱再给 IPC 通道表
+这个 .exe 的类型清单全量提取失败了，按 64 MiB 预算的出路重写命令
+把 case-studies/opencode.md 的追踪方法用到我手上的归档上
+```
+
+## 你带着什么问题来，就翻哪一篇
+
+| 你的处境 | 翻哪一篇 | 可复算的规模 |
+| --- | --- | --- |
+| 第一次装，不知道先跑哪条命令 | [docs/01-getting-started.md §1](docs/01-getting-started.md#1-rea-是什么) | `wc -l < docs/01-getting-started.md` → 719 |
+| 要把 REA 接进你的 AI agent | [docs/02-agent-integration.md §一条命令](docs/02-agent-integration.md#一条命令搞定推荐) | — |
+| 手上有个目标，不知道该用哪个命令 | [guides/by-target-type.md §速查表](guides/by-target-type.md#目标类型速查) | 11 类目标，其中 6 类零依赖 |
+| 命令报错了，或结果看不懂 | [guides/troubleshooting.md §症状](guides/troubleshooting.md#症状error-cannot-create-a-string-longer-than-0x1fffffe8-characters) | 14 种症状，675 行 |
+| 想看真实产出长什么样 | [case-studies/README.md §案例一](case-studies/README.md#案例一pcl2--从-il-里读出一个启动器的完整架构) | 3 个案例，5.5 / 146 / 567 MB |
+| 想让 AI 替你做分析 | [prompts/README.md §怎么用](prompts/README.md#怎么用) | 2 份模板 |
+| REA 覆盖不到的角度，要自己写解析 | [tools/README.md §脚本清单](tools/README.md#脚本清单) | 14 个脚本，1,146 行 |
+
+一句话分工：README 只管“凭什么信”和“从哪进”，具体内容由各目录自己的 README 承担，两边不重复写。
+
+表里那几个规模数全都能当场数出来：
+
+```bash
+grep -E '^\| [0-9]+ \|' guides/by-target-type.md | wc -l          # → 11 类目标
+grep -E '^\| [0-9]+ \|' guides/by-target-type.md | grep -c 零依赖  # → 其中 6 类
+wc -l < guides/troubleshooting.md                                  # → 675 行
+git ls-files 'tools/*.cjs' | xargs wc -l | tail -1                  # → 1146 行 / 14 个脚本
+```
+
+（`11 类`用速查表行数计）
+
+## 凭什么信：效果与机制，每条断言旁边就是复算命令
+
+手册的机制是两条东西：一套三级事实标签，五道会撞到的上限。分级制度让读者能区分“官方写的”和“我们测出来的”：
+
+| 标签 | 含义 | `guides/by-target-type.md` 里的数量 |
+| --- | --- | --- |
+| 【官方】 | 官方文档与契约写明的 | 8 处 |
+| 【实测】 | 我们在真实目标上跑出来的 | 21 处 |
+| 【我们的发现】 | 官方未展开、或表述分散在各篇的 | 1 处 |
+
+```bash
+# 排除文件头的图例行（第 7 行同时定义了【实测】和【官方】），只数正文里的实例
+grep '【官方】' guides/by-target-type.md | grep -vc '标注约定'      # → 8
+grep '【实测】' guides/by-target-type.md | grep -vc '标注约定'      # → 21
+grep -c "【我们的发现】" guides/by-target-type.md                   # → 1
+```
+
+**不数图例，是这类计数最容易错的地方**：直接 `grep -c` 会把定义行也算成一次使用。
+
+关于“【我们的发现】”这一档：初稿标了 3 条，逐条对照 REA 6.5.0 官方 docs 后**撤掉 2 条**。“512 MiB 墙”和“`capabilities` 不完整”官方都写过：前者叫 "Node's single-string limit"，后者在 `docs/cli.md` 里明确指向 server tool list。剩下的这 1 条是：官方给了 `--type` 这条出路，但没说全量失败时你拿不到类型清单，而拿不到清单就填不出 `--type`。
+
+**“复算”这个词要说清楚指的是什么**：正文里每个**结构数**（文件数、行数、标注数、症状条数）旁边都有能跑出它的命令；**实测数**（节点数、边数、字节数）来自分析当时的原始输出——其中案例三的那些，原始摘要就在仓库里（[`case-studies/evidence/`](case-studies/evidence/BASELINE.md)，4.8 KB），你可以直接读出来核对。完整图谱（354 MB）不在仓库里，想复现得拿同样的目标重跑。给不出命令的结构数我们不写；实测数一律标出它出自哪一行。
+
+### 三条断言
 
 **一、官方示例里那条会崩的路** `guides/troubleshooting.md` 第一种症状的报错原文：
 
@@ -112,87 +192,9 @@ grep -n "枚举全表" case-studies/pcl2.md                 # → 第 1958 行�
 
 三个案例的规模跨两个数量级：5.5 MB 的单文件 .NET 应用、146 MB 的 Electron 归档、567 MB 的巨型归档。最后一份只完成了一部分：分析到 3,757 / 16,197 个源文件时父进程结果容量耗尽，报告原样写了“部分完成 + 容量耗尽”，不假装成功。
 
-## 装上就能用
+### 五条撞得到的上限
 
-读手册的三条路先列在这，装 REA 的两条在后面。
-
-**读手册**（三选一）
-
-| 方式 | 做法 | 需要什么 |
-| --- | --- | --- |
-| 克隆 | `git clone https://github.com/sqkl520/rea-handbook.git` | 只要 Git |
-| 直接看 | 在 GitHub 上翻 `docs/` `guides/` `case-studies/` | 只要浏览器 |
-| 只用脚本 | `node tools/asar-peek.cjs <app.asar> package.json` | Node.js，无安装步骤 |
-
-**跑手册里的命令**（三选一）
-
-```bash
-npx rea-agents setup              # 交互式：把 REA 注册到你的 AI agent（Claude Code / Codex / Cursor 等）
-npm install --global rea-agents   # 或：只装命令行，得到 rea 命令
-npx -y rea-agents <命令>          # 或：不装，每次一次性运行
-```
-
-装完先跑 `rea doctor`，确认本机哪些能力可用。`healthy: false` 很常见（见下文「手册里几个最有价值的发现」末尾），看具体哪一项失败，别看总布尔值。`node verify-handbook.mjs` 是另一回事——它查的是这份手册本身有没有坏，不是查你的安装。
-
-前置是 Node.js 22.19+ / 24.11+ / 26+（不支持 23、25 及 prerelease），这是 REA 的 `package.json` 里 `engines` 字段原文：`^22.19.0 || ^24.11.0 || >=26.0.0`。大部分能力零依赖：静态分析 JavaScript/Electron、Go/Rust 二进制、.NET 程序集、PE 资源、Electron fuses 等，只要 Node.js；需要 Ghidra/Hopper/IDA 的只有原生二进制反编译一类。SQLite 另有更严的门槛，见下文「手册里几个最有价值的发现」。
-
-然后在 agent 里直接说话：
-
-```text
-分析 /path/to/electron-app.asar，先给我图谱再给 IPC 通道表
-这个 .exe 的类型清单全量提取失败了，按 64 MiB 预算的出路重写命令
-把 case-studies/opencode.md 的追踪方法用到我手上的归档上
-```
-
-## 你带着什么问题来，就翻哪一篇
-
-| 你的处境 | 翻哪一篇 | 可复算的规模 |
-| --- | --- | --- |
-| 第一次装，不知道先跑哪条命令 | [docs/01-getting-started.md §1](docs/01-getting-started.md#1-rea-是什么) | `wc -l < docs/01-getting-started.md` → 719 |
-| 要把 REA 接进你的 AI agent | [docs/02-agent-integration.md §一条命令](docs/02-agent-integration.md#一条命令搞定推荐) | — |
-| 手上有个目标，不知道该用哪个命令 | [guides/by-target-type.md §速查表](guides/by-target-type.md#目标类型速查) | 11 类目标，其中 6 类零依赖 |
-| 命令报错了，或结果看不懂 | [guides/troubleshooting.md §症状](guides/troubleshooting.md#症状error-cannot-create-a-string-longer-than-0x1fffffe8-characters) | 14 种症状，675 行 |
-| 想看真实产出长什么样 | [case-studies/README.md §案例一](case-studies/README.md#案例一pcl2--从-il-里读出一个启动器的完整架构) | 3 个案例，5.5 / 146 / 567 MB |
-| 想让 AI 替你做分析 | [prompts/README.md §怎么用](prompts/README.md#怎么用) | 2 份模板 |
-| REA 覆盖不到的角度，要自己写解析 | [tools/README.md §脚本清单](tools/README.md#脚本清单) | 14 个脚本，1,146 行 |
-
-一句话分工：README 只管“凭什么信”和“从哪进”，具体内容由各目录自己的 README 承担，两边不重复写。
-
-表里那几个规模数全都能当场数出来：
-
-```bash
-grep -E '^\| [0-9]+ \|' guides/by-target-type.md | wc -l          # → 11 类目标
-grep -E '^\| [0-9]+ \|' guides/by-target-type.md | grep -c 零依赖  # → 其中 6 类
-wc -l < guides/troubleshooting.md                                  # → 675 行
-git ls-files 'tools/*.cjs' | xargs wc -l | tail -1                  # → 1146 行 / 14 个脚本
-```
-
-（`11 类`用速查表行数计）
-
-## 机制：64 MiB 预算与 512 MiB 硬墙
-
-手册的机制是两条东西：一套三级事实标签，五道会撞到的上限。分级制度让读者能区分“官方写的”和“我们测出来的”：
-
-| 标签 | 含义 | `guides/by-target-type.md` 里的数量 |
-| --- | --- | --- |
-| 【官方】 | 官方文档与契约写明的 | 8 处 |
-| 【实测】 | 我们在真实目标上跑出来的 | 21 处 |
-| 【我们的发现】 | 官方未展开、或表述分散在各篇的 | 1 处 |
-
-```bash
-# 排除文件头的图例行（第 7 行同时定义了【实测】和【官方】），只数正文里的实例
-grep '【官方】' guides/by-target-type.md | grep -vc '标注约定'      # → 8
-grep '【实测】' guides/by-target-type.md | grep -vc '标注约定'      # → 21
-grep -c "【我们的发现】" guides/by-target-type.md                   # → 1
-```
-
-**不数图例，是这类计数最容易错的地方**：直接 `grep -c` 会把定义行也算成一次使用。
-
-关于“【我们的发现】”这一档：初稿标了 3 条，逐条对照 REA 6.5.0 官方 docs 后**撤掉 2 条**。“512 MiB 墙”和“`capabilities` 不完整”官方都写过：前者叫 "Node's single-string limit"，后者在 `docs/cli.md` 里明确指向 server tool list。剩下的这 1 条是：官方给了 `--type` 这条出路，但没说全量失败时你拿不到类型清单，而拿不到清单就填不出 `--type`。
-
-**“复算”这个词要说清楚指的是什么**：正文里每个**结构数**（文件数、行数、标注数、症状条数）旁边都有能跑出它的命令；**实测数**（节点数、边数、字节数）来自分析当时的原始输出——其中案例三的那些，原始摘要就在仓库里（[`case-studies/evidence/`](case-studies/evidence/BASELINE.md)，4.8 KB），你可以直接读出来核对。完整图谱（354 MB）不在仓库里，想复现得拿同样的目标重跑。给不出命令的结构数我们不写；实测数一律标出它出自哪一行。
-
-五条撞得到的上限。这一列记的是“官方写给谁看、以及写得有多分散”：
+这一列记的是“官方写给谁看、以及写得有多分散”：
 
 | 上限 | 数值 | 什么时候撞上 | 官方怎么说的 |
 | --- | --- | --- | --- |
@@ -215,6 +217,7 @@ grep -n "570,218,269" guides/troubleshooting.md       # → 46 行（整份读�
 ```
 
 （5.5 MB 那份是 PCL2 的数字，锁在它的某个版本上；它自带更新机制，你复跑时类型数、方法数对不上是正常的，`case-studies/pcl2.md` 开头的“可复现性说明”讲的就是这件事。）
+
 
 ## 手册里几个最有价值的发现
 
