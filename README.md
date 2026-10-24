@@ -8,16 +8,17 @@
 [![Unofficial handbook](https://img.shields.io/badge/REA-Unofficial%20handbook-d73a49?style=flat-square)](NOTICE.md)
 [![Based on REA 6.5.0](https://img.shields.io/badge/based%20on-REA%206.5.0-blue?style=flat-square)](https://www.npmjs.com/package/rea-agents)
 
-**给第一次用 REA 的人一份写清了坑、每条都能自己复算的第三方手册。**
+**给第一次用 REA 的人一份写清了坑的第三方手册——每个数都标了它从哪来。**
 
 <sub>基于 REA 6.5.0 写出。Node.js 22.19+ / 24.11+ / 26+（不支持 23、25 及 prerelease）；三平台覆盖不均，Windows 上部分能力不可用。</sub>
 
 官方文档告诉你有哪些命令。第一次会在第几步卡住，它写了吗？
 
-你把 146 MB 的归档跑完，拿到 354 MB 的 evidence，然后用 `readFileSync` 去读它：
-`Error: Cannot create a string longer than 0x1fffffe8 characters`，直接崩。
-这条 512 MiB 的墙，官方文档一个字没提。本手册存在的全部理由就是写这些：
-14 种症状、11 类目标、22 处【实测】标注，每一条旁边都留了能当场复算的命令。
+567 MB 的归档跑完，产出 570 MB 的 evidence。照官方追溯示例用 `readFileSync` 去读它：
+`Error: Cannot create a string longer than 0x1fffffe8 characters`，直接崩——
+官方材料里同时放着对的做法（`jq -c` 流式投影）和会崩的做法，没告诉你哪条路是坑。
+本手册存在的全部理由就是写这些：
+14 种症状、11 类目标、21 处【实测】标注，每个结构数旁边都留了能跑出它的命令。
 
 ```bash
 git clone https://github.com/sqkl520/rea-handbook.git    # 读这本手册（本仓库）
@@ -40,7 +41,7 @@ npx rea-agents setup                                     # 跑通手册里的命
 ## 合规与数据流
 
 - 本仓库的逆向分析报告基于**公开获取的软件发行包**，使用**静态分析方法**（不执行目标程序、不绕过任何技术保护措施），目的为学习软件设计思想。
-- 分析对象包括闭源商业软件（Plain Craft Launcher 2、ChatGPT 桌面版）与开源软件（OpenCode）。所有商标与代码版权归各自权利人。报告中的代码片段为分析中整理/重写的示意，用于说明设计思想。
+- 分析对象包括 PCL2（源码公开，但采用自定义的分发许可，不是 OSI 开源）、ChatGPT 桌面版（闭源）与 OpenCode（开源）。所有商标与代码版权归各自权利人。报告中的代码片段为分析中整理/重写的示意，用于说明设计思想。
 - 报告**不包含**：可用于规避授权/付费机制的操作细节、密钥或凭据、个人隐私信息。
 - 如果你是本报告分析对象的作者，对内容有异议，请通过 [issue](https://github.com/sqkl520/rea-handbook/issues) 联系，我们会处理。
 
@@ -58,7 +59,7 @@ node verify-handbook.mjs        # 【1】内部链接 【2】合规扫描 【3�
 
 ## 先看效果：三条断言，每条旁边就是复算命令
 
-**一、那道官方文档没写的墙。** `guides/troubleshooting.md` 第一种症状的报错原文：
+**一、官方示例里那条会崩的路。** `guides/troubleshooting.md` 第一种症状的报错原文：
 
 ```text
 Error: Cannot create a string longer than 0x1fffffe8 characters
@@ -154,28 +155,36 @@ git ls-files 'tools/*.cjs' | xargs wc -l | tail -1                  # → 1146 �
 | 标签 | 含义 | `guides/by-target-type.md` 里的数量 |
 | --- | --- | --- |
 | 【官方】 | 官方文档与契约写明的 | 8 处 |
-| 【实测】 | 我们在真实目标上跑出来的 | 22 处 |
-| 【我们的发现】 | 官方没写、甚至与官方不符的 | 3 处 |
+| 【实测】 | 我们在真实目标上跑出来的 | 21 处 |
+| 【我们的发现】 | 官方没写、甚至与官方不符的 | 1 处 |
 
 ```bash
-grep -c "【官方】" guides/by-target-type.md          # → 8
-grep -c "【实测】" guides/by-target-type.md          # → 22
-grep -c "【我们的发现】" guides/by-target-type.md     # → 3
+# 排除文件头的图例行（第 7 行同时定义了【实测】和【官方】），只数正文里的实例
+grep '【官方】' guides/by-target-type.md | grep -vc '标注约定'      # → 8
+grep '【实测】' guides/by-target-type.md | grep -vc '标注约定'      # → 21
+grep -c "【我们的发现】" guides/by-target-type.md                   # → 1
 ```
 
-**正文每一条【实测】标注都经过独立复核后合并进文档。** 复核轮次与材料不在仓库里，所以这里只给这条定性说法，不给数字。给不出复算命令的数字我们就不写。
+**不数图例，是这类计数最容易错的地方**——直接 `grep -c` 会把定义行也算成一次使用。
 
-五条撞得到的上限：
+关于"【我们的发现】"这一档：初稿标了 3 条，逐条对照 REA 6.5.0 官方 docs 后**撤掉 2 条**——
+"512 MiB 墙"和"`capabilities` 不完整"官方都写过（前者叫 "Node's single-string limit"，后者在
+`docs/cli.md` 明确指向 server tool list）。剩下的这 1 条是：官方给了 `--type` 这条出路，
+但没说全量失败时你拿不到类型清单，而拿不到清单就填不出 `--type`。
 
-| 上限 | 数值 | 什么时候撞上 | 官方写了吗 |
+**"复算"这个词要说清楚指的是什么**：正文里每个**结构数**（文件数、行数、标注数、症状条数）旁边都有能跑出它的命令；**实测数**（节点数、边数、字节数）只能定位——它们来自我们当时的证据文件，而你手上没有那份证据，除非你拿同样的目标重跑一遍。给不出命令的结构数我们不写；实测数一律标出它出自哪一行。
+
+五条撞得到的上限。这一列不是"官方漏了"，而是**官方写了但没告诉你撞上之后会怎样**：
+
+| 上限 | 数值 | 什么时候撞上 | 官方怎么说的 |
 | --- | --- | --- | --- |
-| V8 单字符串硬墙 | `0x1fffffe8` = 512 MiB | `readFileSync` 读几百 MB 的 evidence | 没提这道墙 |
-| .NET 表示预算 | 64 MiB（`67108864`） | `inspect-managed-members` 全量提取 | 写了预算，没写"全量失败时拿不到类型清单"这一层门槛 |
-| semantic 层节点上限 | 100,000 | 大图谱的 semantic 层，`status: partial` | 本手册记为【实测】，未核对官方是否另文说明 |
-| 父进程结果容量 | 视目标而定 | 567 MB 归档停在 3,757 / 16,197 个源文件 | 给了调节参数 |
-| 退出码语义 | 0 | 64 MiB 预算失败时退出码仍是 0，`coverage.state = "unavailable"` | 0/1/128+N 官方有表；这条组合没点破 |
+| V8 单字符串硬墙 | `0x1fffffe8` = 512 MiB | `readFileSync` 读几百 MB 的 evidence | 提了 "Node's single-string limit"（3 篇 docs），不给字节数，也没说自己的追溯示例正好会撞上 |
+| .NET 表示预算 | 64 MiB（`67108864`） | `inspect-managed-members` 全量提取 | 写了预算、也给了 `--type` 出路，但没说全量失败时你拿不到类型清单（而拿不到清单就填不出 `--type`） |
+| semantic 层节点上限 | 默认 100,000，可调到 1,000,000 | 大图谱的 semantic 层，`status: partial` | 写了默认值与 `--max-semantic-nodes` 的调节范围（1–1,000,000）——**这是可调默认值，不是硬墙** |
+| 父进程结果容量 | 视目标而定 | 567 MB 归档停在 3,757 / 16,197 个源文件 | 给了 `--max-heap-mb` / `--analysis-timeout-ms`，但没给"中止时退回 partial 而不是报错"的实操预期 |
+| 退出码语义 | 0 | 64 MiB 预算失败时退出码仍是 0，`coverage.status = "unavailable"` | 有退出码表，也提过 "result may include partial evidence"——但两句话隔着好几页 |
 
-第二行值得多说一句，因为它是本手册最反直觉的一条：**文件只有 5.5 MB，全量成员提取照样失败**——`coverage.state = "unavailable"`，`detail` 里写着超出 `67108864` 字节。这 64 MiB 不是文件大小上限，是一条独立的表示预算；同一篇还给了另一个方向的反例：3.4 MB 的 `System.dll` 也会撑爆它。复算：`grep -n "67108864" guides/by-target-type.md` → 第 146 行；`grep -n "67108864" guides/troubleshooting.md` → 112 与 120 行。
+第二行值得多说一句，因为它是本手册最反直觉的一条：**文件只有 5.5 MB，全量成员提取照样失败**——`coverage.status = "unavailable"`，`detail` 里写着超出 `67108864` 字节。这 64 MiB 不是文件大小上限，是一条独立的表示预算；同一篇还给了另一个方向的反例：3.4 MB 的 `System.dll` 也会撑爆它。复算：`grep -n "67108864" guides/by-target-type.md` → 第 146 行；`grep -n "67108864" guides/troubleshooting.md` → 112 与 120 行。
 
 表里剩下三个数同样在仓库内可点：
 
@@ -235,7 +244,7 @@ grep -rn "6\.5\.0" docs/ guides/ | grep -c 版本     # → 6 处版本锚点
 
 **一、案例数字被目标自己的更新机制改掉。** PCL2 报告的 SHA-256 锁的是分析时那份文件；手册写作期间，安装目录里的文件被 PCL2 自己的更新机制替换了，类型数与字符串数随之变化。于是报告头部补了一段"可复现性说明"，并把"分析任何自更新软件前先记录哈希"写成了通用提醒。
 
-**二、`--scope project` 与 `@latest` 这两条写法，在手册里被标成了"别用"。** `--scope project` 会往仓库里写可提交的 `.mcp.json`；`@latest` 做持久注册违反官方自己那条"持久注册要用确切版本"的要求，行为和你的环境会随上游发布静默漂移。手册在这一条上补的是官方没写在同处的一句：`--scope local` 的注册不会被 `rea doctor` / `rea uninstall` 报告或移除，要 `claude mcp remove --scope local rea` 手动清理（见 `docs/01-getting-started.md` §3.5 与 §7、`docs/02-agent-integration.md`）。
+**二、`--scope project` 与 `@latest` 这两条写法，在手册里被标成了"别用"。** `--scope project` 会往仓库里写可提交的 `.mcp.json`；`@latest` 做持久注册违反官方自己那条"持久注册要用确切版本"的要求，行为和你的环境会随上游发布静默漂移。这两条官方都写了（`docs/installation.md` 同一段里接着就说了 `--scope local` 的注册不会被 `rea doctor` / `rea uninstall` 报告或移除，要 `claude mcp remove --scope local rea` 手动清理）——本手册的价值是把它们放到"你先会踩到"的位置，而不是埋在安装文档第三页（见 `docs/01-getting-started.md` §3.5 与 §7、`docs/02-agent-integration.md`）。
 
 ## 仓库结构
 

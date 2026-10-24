@@ -110,8 +110,8 @@ rea trace-application-feature trace-input.json --format json
 
 - **`--integrity-policy` 的坑是常态，不是异常**。遇到 `artifact_integrity_mismatch` 先看错误指认的路径；打包器二次签名/剥离原生二进制是常见原因，加 `record-and-continue` 重跑即可。矛盾会保留在结果里，不要当它不存在。
 - **大目标先投影再读**。几万节点 + 几百 MB evidence 直接进上下文不现实：`--filter-output`（跑的时候缩）→ jq summary view（存下来后缩）→ module page（按需翻）。官方数据：334 MB Obsidian evidence 的 summary view 约 10 KB。
-- **Node 有 512 MiB 字符串硬墙**（【我们的发现】）。`ERR_STRING_TOO_LONG`（`0x1fffffe8` 字节）发生在 `readFileSync(evidence.json, 'utf8')`；570 MB 的 evidence 用 node 读必崩，用 `jq -c` 流式投影可行（视磁盘与目标大小可能到分钟级；且输出 `view.json` 与 evidence 同等大小，先留好空间）。**投影用 jq，不要用 node -e**。
-- **功能追踪的 seed kind 用 `string`**（【实测】+ 源码核实）。官方文档把 "IPC channel" 列为合法 seed kind，但 `channel` 只匹配 `node.kind === "ipc-channel"` 的节点身份，而通道名实际住在 `observations[].properties.static_analysis.electron.ipc[].channel` 里——实测 `channel` 对 `kill-sidecar` 返回 no-match，`string` 命中 2 个种子。
+- **Node 有 512 MiB 字符串硬墙**（【官方】提到了这个限制，但没给数值）。官方三篇 docs 都称它为 `Node's single-string limit`（`javascript-artifact-reconstruction.md`、`mcp-contracts.md`、`testing.md`），但没有给出 `0x1fffffe8` / 536,870,888 这个数，也没有指出它自己的追溯示例（用 `readFileSync` 读整份 evidence）在几百 MB 上会撞上。**这是本手册补的部分：数值 + 会崩的写法。**`ERR_STRING_TOO_LONG`（`0x1fffffe8` 字节）发生在 `readFileSync(evidence.json, 'utf8')`；570 MB 的 evidence 用 node 读必崩，用 `jq -c` 流式投影可行（视磁盘与目标大小可能到分钟级；且输出 `view.json` 与 evidence 同等大小，先留好空间）。**投影用 jq，不要用 node -e**。
+- **功能追踪的 seed kind 用 `string`**（【实测】+ 源码核实）。官方文档把 "IPC channel" 列为合法 seed kind。**`channel` 不是不能用，它的搜索面比 `string` 窄**：源码里 `channel` 只在本节点 `kind === "ipc-channel"` 时参与匹配，匹配字段是 `.label` / `.channel` / `.key`；而实际图谱里通道名往往住在 `javascript-asset` 节点的 `properties.static_analysis.electron.ipc[].channel` 下——那不是我这边 `ipc-channel` 节点，所以搜不到。`string` 是全局包含匹配，能跨节点类型命中。实测 `channel` 对 `kill-sidecar` 返回 no-match，`string` 命中 2 个种子。**结论：拿不准就用 `string`；确定图谱里有 `ipc-channel` 节点时才用 `channel`。**
 - **父进程结果容量**：大目标可能中途停止并返回 partial。官方推荐的调节是 `--max-heap-mb` / `--analysis-timeout-ms`（官方正路，我们当时未验证；我们只试过 `NODE_OPTIONS`，无效——worker 环境里 `NODE_OPTIONS` 被 `delete`）。更稳的办法是 `--source-path` 分层喂子集。
 - **原生插件是静态分析的尽头**：`.node` 只记录"JS 请求了它"，不解析插件内部。要对交接点继续，用 §9 的原生引擎。
 - **Windows / Git Bash 路径坑**（【实测】）：Git Bash 的 `/tmp` 实际在 `%LOCALAPPDATA%\Temp`，Node 收到的 `/tmp/x` 会变成 `D:\tmp\x`——用 `cygpath -w` 转换或把文件放项目目录；传给脚本的 `/` 开头参数被 MSYS 改写时加 `MSYS_NO_PATHCONV=1`；在本仓库（ESM）写辅助脚本要用 `.cjs` 后缀。
@@ -143,7 +143,7 @@ rea inspect-managed-native-boundaries "<你的程序>.exe" --format json
 rea compare-managed-members "<旧版本>.exe" "<新版本>.exe" --format json
 ```
 
-**`--type` 的坑**：全量成员解码有**独立的 64 MiB 表示预算**（不是文件大小上限）。PCL2 只有 5.5 MB，`inspect-managed-members` 全量仍然失败——`coverage.state = "unavailable"`，`issues[0] = {code:"resource-limit", scope:"metadata.representation", detail:"Managed metadata exceeds the 67108864 byte representation budget"}`（【实测】，证据在 `pcl2-members.json` 原文）。官方给的出路是"选已知的声明类型"，**但这一步有个官方没交代的门槛**（【我们的发现】）：官方示例假设你已经知道精确类型全名，而全量失败时 REA 不会给你类型清单。拿类型名的可行手段：
+**`--type` 的坑**：全量成员解码有**独立的 64 MiB 表示预算**（不是文件大小上限）。PCL2 只有 5.5 MB，`inspect-managed-members` 全量仍然失败——`coverage.status = "unavailable"`，`issues[0] = {code:"resource-limit", scope:"metadata.representation", detail:"Managed metadata exceeds the 67108864 byte representation budget"}`（【实测】，证据在 `pcl2-members.json` 原文）。官方给的出路是"选已知的声明类型"（`docs/cli.md` 原文：`a declaring type name you already know`——它承认了这个门槛），**但没点破这个循环**（【我们的发现】）：`--type` 要求你知道精确类型全名，而全量失败时 REA 不会给你类型清单，所以第一步的清单得从别处来。拿类型名的可行手段：
 
 ```powershell
 # Windows PowerShell：不用加载执行，只读反射（实测用于 PCL2）
@@ -568,7 +568,7 @@ rea providers --format json     # 同一份 catalog 身份摘要
 
 【实测】它会按 provider 分组报告操作、`effects`、`available`、`reason`、`availability_code`，还会给出 `analysis_provider_candidates`（ghidra/hopper/ida 的 `not_configured` / `unsupported_host`）和 `server_identity`（包名、版本、CLI/MCP 工具计数）。
 
-**它不报告零依赖能力**（【我们的发现】，官方文档没显式警告这个陷阱）。在本机 6.5.0 上实测：输出里只有 `native-macos`（9 个操作，`unsupported_host`）、`rea-artifact-graph`（多数可用，`inspect_asset_catalog` 需 macOS `assetutil`）、`rea-dotnet-static`（3 个可用）、`sqlite`（Node 版本不合格时 `unsupported_version`），以及 ghidra/hopper/ida 三个候选。**静态 JS/Electron 分析、Go/Rust 检查、PE 资源、Electron fuses、网站观察都不在输出里——没列不等于不能用。**
+**它不报告零依赖能力**（【官方已说明这个区分】，但容易读漏）。`docs/cli.md` 原文："These commands describe binary-session providers and auxiliary capabilities. For the complete MCP surface, use the connected server's tool list"——**这句就是警告**，只是它出现在"Choose a provider"一节，找能力清单的人不会去那里读。在本机 6.5.0 上实测：输出里只有 `native-macos`（9 个操作，`unsupported_host`）、`rea-artifact-graph`（多数可用，`inspect_asset_catalog` 需 macOS `assetutil`）、`rea-dotnet-static`（3 个可用）、`sqlite`（Node 版本不合格时 `unsupported_version`），以及 ghidra/hopper/ida 三个候选。**静态 JS/Electron 分析、Go/Rust 检查、PE 资源、Electron fuses、网站观察都不在输出里——没列不等于不能用。**
 
 常见 `availability_code` 的含义：
 
