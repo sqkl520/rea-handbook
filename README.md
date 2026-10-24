@@ -12,7 +12,7 @@
 
 <sub>非官方第三方手册 · 基于 REA 6.5.0 写出 · 三平台覆盖不均（详见「装上就能用」）</sub>
 
-REA 是一个本地跑的逆向工程工具：一个 CLI 加一个 MCP server，把"读二进制、读打包产物"
+REA 是一个本地跑的逆向工程工具：一个 CLI 加一个 MCP server，把“读二进制、读打包产物”
 变成结构化证据喂给 AI agent。它不执行目标程序——静态读完，给你一张带出处的图。
 
 这是它读一个 Electron 应用主程序的真实输出（231 MB 的 `OpenCode.exe`，9 个安全开关，一次调用；本机实测 7–9 秒）：
@@ -48,8 +48,6 @@ git clone https://github.com/sqkl520/rea-handbook.git    # 读这本手册（本
 npx rea-agents setup                                     # 跑通手册里的命令（装的是 REA，不是本仓库）
 ```
 
-两条路是分开的：克隆本仓库你只得到 Markdown 和脚本；要跑分析，得装 REA。
-
 [看效果](#先看效果三条断言每条旁边就是复算命令) · [装上就能用](#装上就能用) · [机制](#机制64-mib-预算与-512-mib-硬墙) · [你带着什么问题来](#你带着什么问题来就翻哪一篇) · [局限](#这本手册会过期也有些事它做不到)
 
 </div>
@@ -76,19 +74,19 @@ code: 'ERR_STRING_TOO_LONG'
 grep -c '^## 症状' guides/troubleshooting.md    # → 14 种症状条目
 ```
 
-**二、跑通一场能产出多少个数字。** OpenCode 桌面版 146 MB 的 `app.asar`，【实测】计数（`guides/by-target-type.md` 第 107 行）：
+**二、跑一次能产出多少数字。** OpenCode 桌面版 146 MB 的 `app.asar`，【实测】计数（`guides/by-target-type.md` 第 107 行）：
 
 ```
-图谱 27,278 节点 / 32,977 边 / 7,823 条终端路径
-AST 节点 4,751,494 / findings 30,648 / 解析 JS 4,489 个
-IPC：163 个操作 / 76 个字面量通道 / 81 个主进程 handler / 55 对配对
+图谱 27,278 个节点 / 32,977 条边 / 7,823 条终端路径
+AST 节点 4,751,494 个 / findings 30,648 条 / 解析 JS 4,489 个
+IPC：163 个操作 / 76 个字面量通道 / 81 个主进程 handler / 55 组配对
 ```
 
 ```bash
 grep -n "27,278" guides/by-target-type.md       # → 第 107 行，整串计数都在这一行
 ```
 
-**三、分析出来的不是"概要"，是能直接用的结构。** PCL2 的崩溃诊断子系统，反编译出 46 个崩溃原因枚举——不是猜的，是逐个从 `CrashReason` 常量读出来的：
+**三、分析出来的不是“概要”，是能直接用的结构。** PCL2 的崩溃诊断子系统，反编译出 46 个崩溃原因枚举——不是猜的，是逐个从 `CrashReason` 常量读出来的：
 
 ```
 0  Java虚拟机参数有误          18 确定Mod导致游戏崩溃        36 Fabric报错并给出解决方案
@@ -99,10 +97,10 @@ grep -n "27,278" guides/by-target-type.md       # → 第 107 行，整串计数
 …
 ```
 
-顺带发现一条：**#35「Fabric报错」在代码里没有生产者**——模板存在，但 `AnalyzeCrit1/2` 都不产生它。这类"文档里有、代码里没有"的坑，是读反编译源码才看得到的。
+顺带发现一条：**#35「Fabric报错」在代码里没有生产者**——模板存在，但 `AnalyzeCrit1/2` 都不产生它。这类“文档里有、代码里没有”的坑，是读反编译源码才看得到的。
 
 ```bash
-wc -l < case-studies/pcl2.md                          # → 3635，单份主报告的行数
+wc -l < case-studies/pcl2.md                          # → 3635 行，单份主报告
 grep -n "枚举全表" case-studies/pcl2.md                 # → 第 1958 行，46 行完整枚举表
 ```
 
@@ -152,7 +150,7 @@ npx -y rea-agents <命令>          # 或：不装，每次一次性运行
 | 想让 AI 替你做分析 | [prompts/README.md §怎么用](prompts/README.md#怎么用) | 2 份模板 |
 | REA 覆盖不到的角度，要自己写解析 | [tools/README.md §脚本清单](tools/README.md#脚本清单) | 14 个脚本，1,146 行 |
 
-一句话分工：README 只管"凭什么信"和"从哪进"，具体内容由各目录自己的 README 承担，两边不重复写。
+一句话分工：README 只管“凭什么信”和“从哪进”，具体内容由各目录自己的 README 承担，两边不重复写。
 
 表里那几个规模数全都能当场数出来：
 
@@ -167,7 +165,7 @@ git ls-files 'tools/*.cjs' | xargs wc -l | tail -1                  # → 1146 �
 
 ## 机制：64 MiB 预算与 512 MiB 硬墙
 
-手册的机制是两条东西：一套三级事实标签，五道会撞到的上限。分级制度让读者能区分"官方写的"和"我们测出来的"：
+手册的机制是两条东西：一套三级事实标签，五道会撞到的上限。分级制度让读者能区分“官方写的”和“我们测出来的”：
 
 | 标签 | 含义 | `guides/by-target-type.md` 里的数量 |
 | --- | --- | --- |
@@ -184,12 +182,12 @@ grep -c "【我们的发现】" guides/by-target-type.md                   # →
 
 **不数图例，是这类计数最容易错的地方**——直接 `grep -c` 会把定义行也算成一次使用。
 
-关于"【我们的发现】"这一档：初稿标了 3 条，逐条对照 REA 6.5.0 官方 docs 后**撤掉 2 条**——
-"512 MiB 墙"和"`capabilities` 不完整"官方都写过（前者叫 "Node's single-string limit"，后者在
+关于“【我们的发现】”这一档：初稿标了 3 条，逐条对照 REA 6.5.0 官方 docs 后**撤掉 2 条**——
+“512 MiB 墙”和“`capabilities` 不完整”官方都写过（前者叫 "Node's single-string limit"，后者在
 `docs/cli.md` 明确指向 server tool list）。剩下的这 1 条是：官方给了 `--type` 这条出路，
 但没说全量失败时你拿不到类型清单，而拿不到清单就填不出 `--type`。
 
-**"复算"这个词要说清楚指的是什么**：正文里每个**结构数**（文件数、行数、标注数、症状条数）旁边都有能跑出它的命令；**实测数**（节点数、边数、字节数）来自分析当时的原始输出——其中案例三的那些，原始摘要就在仓库里（[`case-studies/evidence/`](case-studies/evidence/BASELINE.md)，4.8 KB），你可以直接读出来核对。完整图谱（354 MB）不在仓库里，想复现得拿同样的目标重跑。给不出命令的结构数我们不写；实测数一律标出它出自哪一行。
+**“复算”这个词要说清楚指的是什么**：正文里每个**结构数**（文件数、行数、标注数、症状条数）旁边都有能跑出它的命令；**实测数**（节点数、边数、字节数）来自分析当时的原始输出——其中案例三的那些，原始摘要就在仓库里（[`case-studies/evidence/`](case-studies/evidence/BASELINE.md)，4.8 KB），你可以直接读出来核对。完整图谱（354 MB）不在仓库里，想复现得拿同样的目标重跑。给不出命令的结构数我们不写；实测数一律标出它出自哪一行。
 
 五条撞得到的上限。这一列不是"官方漏了"，而是**官方写了但没告诉你撞上之后会怎样**：
 
@@ -201,7 +199,7 @@ grep -c "【我们的发现】" guides/by-target-type.md                   # →
 | 父进程结果容量 | 视目标而定 | 567 MB 归档停在 3,757 / 16,197 个源文件 | 给了 `--max-heap-mb` / `--analysis-timeout-ms`，但没给"中止时退回 partial 而不是报错"的实操预期 |
 | 退出码语义 | 0 | 64 MiB 预算失败时退出码仍是 0，`coverage.status = "unavailable"` | 有退出码表，也提过 "result may include partial evidence"——但两句话隔着好几页 |
 
-第二行值得多说一句，因为它是本手册最反直觉的一条：**文件只有 5.5 MB，全量成员提取照样失败**——`coverage.status = "unavailable"`，`detail` 里写着超出 `67108864` 字节。这 64 MiB 不是文件大小上限，是一条独立的表示预算；同一篇还给了另一个方向的反例：3.4 MB 的 `System.dll` 也会撑爆它。复算：`grep -n "67108864" guides/by-target-type.md` → 第 146 行；`grep -n "67108864" guides/troubleshooting.md` → 112 与 120 行。
+**64 MiB 那条值得单说：文件只有 5.5 MB，全量成员提取照样失败。** `coverage.status = "unavailable"`，`detail` 里写着超出 `67108864` 字节。这 64 MiB 不是文件大小上限，是一条独立的表示预算。同一篇还给了反向反例：3.4 MB 的 `System.dll` 也会撑爆它。复算：`grep -n "67108864" guides/by-target-type.md` → 第 146 行；`grep -n "67108864" guides/troubleshooting.md` → 112 与 120 行。
 
 表里剩下三个数同样在仓库内可点：
 
@@ -215,10 +213,10 @@ grep -n "570,218,269" guides/troubleshooting.md       # → 46 行（必崩的�
 
 ## 手册里几个最有价值的发现
 
-- **SQLite 的 Node 版本有独立的更严门槛。** 整体要求 24.11+，SQLite 却要求 **24.15+**（需要原生 `DatabaseSync.limits`）。24.11–24.14 是"满足整体、不满足 SQLite"的陷阱区间——SQLite 能力会报 `available: false`（`unsupported_version`），不细看结果就会漏掉。
-- **`--filter-output` 写错多数静默返回空**（字段名笔误、路径不存在），但未闭合的 `[` 切片例外——会报 `INVALID_OUTPUT_FILTER`（未闭合的 `]` 仍静默）。
+- **SQLite 的 Node 版本有独立的更严门槛。** 整体支持 22.19+、24.11+ 与 26+，SQLite 另需 **24.15+**（要原生 `DatabaseSync.limits`）。于是 24.11–24.14 成了"满足整体、不满足 SQLite"的陷阱区间——SQLite 能力会报 `available: false`（`unsupported_version`），不细看结果就会漏掉。
+- **`--filter-output` 写错时多数静默返回空**（字段名笔误、路径不存在），但未闭合的 `[` 切片例外——会报 `INVALID_OUTPUT_FILTER`（未闭合的 `]` 仍静默）。
 - **`trace-application-feature` 的 seed kind：拿不准就用 `string`。** 官方把 `channel` 列为合法取值。它并非不能用——源码里 `channel` 会在 `kind === "ipc-channel"` 的节点上匹配 `.label` / `.channel` / `.key`；但实际图谱里通道名常挂在 `javascript-asset` 节点的 `static_analysis.electron.ipc[].channel` 下，那时 `channel` 搜不到，`string` 能。实测 `kill-sidecar`：`channel` 返回 no-match，`string` 命中 2 个。
-- **大 evidence 有 512 MiB 的 Node 硬墙。** V8 单个字符串长度上限约 512 MiB，超限即 `ERR_STRING_TOO_LONG`。几百 MB 的 evidence 投影要用 `jq` 流式处理，`node readFileSync` 路线会直接崩。
+- **大 evidence 有 512 MiB 的 Node 硬墙。** V8 单个字符串长度上限约 512 MiB，超限即 `ERR_STRING_TOO_LONG`。几百 MB 的 evidence 投影要用 `jq` 流式处理，`fs.readFileSync` 整份读入会直接崩。
 - **`rea capabilities` 不是完整能力清单。** 它只报告需要 provider（Ghidra 等）的操作；零依赖能力不在输出里——没列不等于不能用。
 
 第 2、4、5 条在仓库内有原句可点，三条命令定位到行：
@@ -233,7 +231,7 @@ grep -rn "不是完整能力清单" docs/ guides/
 
 顺带一条最容易误判的：装完跑 `rea doctor`，`healthy` 是 `false` 是**正常的**——它把"没配 Ghidra/Hopper"也算进总分，而零依赖功能全部可用。判断能不能干活，看具体哪一项失败，别看那个总布尔值（详见 `docs/01-getting-started.md` §4.2）。
 
-## 这手册和官方文档的关系
+## 本手册和官方文档的关系
 
 **官方文档是权威**：[morluto/rea](https://github.com/morluto/rea) 的 `docs/` 与官网 [rea.tools](https://rea.tools/)。
 
@@ -285,7 +283,7 @@ git ls-files '*.md' | wc -l                       # → 16 篇 Markdown
 git ls-files 'tools/*.cjs' | wc -l                # → 14 个脚本
 ```
 
-四个正文目录各自的行数（`git ls-files docs guides case-studies prompts | xargs cat | wc -l`，`wc -l` 口径，不含本 README）。这些数字会随正文增删变化；每个数字旁边的命令就是它的当前值来源：
+四个正文目录各自的行数（`git ls-files docs guides case-studies prompts | xargs cat | wc -l`，`wc -l` 口径，不含本 README）。这些数字会随正文增删变化，上一条命令跑一次就是它们的当前值：
 
 | 目录 | 文件数 | 行数 |
 | --- | --- | --- |
@@ -295,7 +293,7 @@ git ls-files 'tools/*.cjs' | wc -l                # → 14 个脚本
 | `prompts/` | 3 | 635 |
 | 合计 | 13 | 7,462 |
 
-这 14 个脚本零第三方依赖：全部 `require` 只有 Node 内置的 `fs` 和 `path`，仓库里没有 `package.json`，也没有 `node_modules`。克隆后直接 `node tools/asar-peek.cjs <app.asar> package.json` 就能跑：
+这 14 个脚本只 `require` Node 内置模块，仓库里没有 `package.json`，也没有 `node_modules`。克隆后直接 `node tools/asar-peek.cjs <app.asar> package.json` 就能跑：
 
 ```bash
 grep -rhoE "require\(['\"][^'\"]+['\"]\)" tools/*.cjs \
@@ -313,7 +311,7 @@ grep -rhoE "require\(['\"][^'\"]+['\"]\)" tools/*.cjs \
 
 三个案例都是静态完成的：没有执行过目标程序的任何一行代码，没有绕过任何技术保护措施。分析对象是你本机已安装的软件。**请自行确认你的使用场景合法**，只在你对它有权做分析的目标上跑这些命令。
 
-数据流一句话：全流程在本机做，不联网、不上传、不收集任何东西；仓库里也没有需要保护的数据。完整的归属与第三方工具清单见 [NOTICE.md](NOTICE.md)。
+数据流一句话：分析全程在本机完成，目标文件和 evidence 都不上传；只有装 REA 那一步要联网。完整的归属与第三方工具清单见 [NOTICE.md](NOTICE.md)。
 
 上面四条不是口头承诺，有一条命令能整仓扫一遍（词条在脚本里做了编码存储，所以这条命令本身不含任何敏感字面值）：
 
@@ -321,7 +319,7 @@ grep -rhoE "require\(['\"][^'\"]+['\"]\)" tools/*.cjs \
 node verify-handbook.mjs        # 【1】链接 【2】合规 【3】占位符 【4】结构 【5】篇幅 【6】行号断言 【8】锚点
 ```
 
-它一次查这几项：仓库内的相对链接是否都通、有没有敏感内容残留、有没有没填完的占位符、必需文件在不在位，**正文里每一条「某文件第 N 行」的说法是否还对得上**（被引文件一改行号就会漂，而你是按行号去跳的），案例数字与仓库里那两份证据是否一致，以及**每个 `#锚点` 是否真的落在某个标题上**——中文标题带全角标点时 GitHub 会把标点整个删掉，改一个字锚点就静默 404，而"链接全绿"仍然通过。
+它一次查这几项：相对链接是否都通、有没有敏感内容残留、有没有没填完的占位符、必需文件在不在位；**正文里「某文件第 N 行」的说法是否还对得上**（被引文件一改行号就漂，而你是按行号跳的）；案例数字与仓库里那两份证据是否一致；**每个 `#锚点` 是否真的落在某个标题上**（中文标题带全角标点时 GitHub 会把标点整个删掉，改一个字锚点就静默 404，而"链接全绿"仍然通过）。
 
 ## 这本手册会过期，也有些事它做不到
 
@@ -329,7 +327,7 @@ node verify-handbook.mjs        # 【1】链接 【2】合规 【3】占位符 �
 - **`rea capabilities` 的输出本身不完整**，本手册据它写的"哪些可用"也跟着不完整。
 - **567 MB 那个案例只完成了一部分。** 分析到 3,757 / 16,197 个源文件就停了；它证明的是"超大目标怎么降级处理"，不是"什么规模都能跑通"。
 - **原生二进制反编译不在本手册范围内。** 那条路要 Ghidra / Hopper / IDA，而且平台限制不少：Windows 上 Hopper 不可用、Ghidra 仅实验性支持、固件等类型多为 Linux-only。
-- **`tools/` 的脚本不是产品。** 都是"够用就好"的自写解析器，最长的一个 261 行（`wc -l tools/*.cjs | sort -n | tail -2` 可复算），没有测试、没有参数校验，读得懂、可以改，但别当库用。
+- **`tools/` 的脚本不是产品。** 都是"够用就好"的自写解析器，最长的一个 261 行（`wc -l tools/*.cjs | sort -n | tail -2` 的倒数第二行就是这个数），没有测试、没有参数校验，读得懂、可以改，但别当库用。
 - **几百 MB 的 evidence 不是这些脚本处理的**，走 `jq` 流式投影。上面那条 512 MiB 的墙，是 Node/V8 的限制，不是 REA 的限制。
 - **不含授权机制分析。** PCL2 那份报告里有一节标着"（略）"，内容是刻意移除的；本手册也**不承诺每个仓库外引用都能点开**，只承诺仓库内的相对链接由 `node verify-handbook.mjs` 全部验过。
 
@@ -337,7 +335,7 @@ node verify-handbook.mjs        # 【1】链接 【2】合规 【3】占位符 �
 
 ## 反馈与贡献
 
-什么算 bug：你在同一版本（6.5.0 或更新版本上已核对过行为描述）上跑出与本手册不同的行为，且能给出命令与输出。什么算提案：缺的目标类型、缺的平台、缺的症状条目。
+什么算 bug：你在 6.5.0（或你已逐条核对过的更新版本）上跑出与本手册不同的行为，且能给出命令与输出。什么算提案：缺的目标类型、缺的平台、缺的症状条目。
 
 提之前请先跑这两条，它们能一次扫出死链、敏感残留和结构缺件：
 
@@ -346,7 +344,7 @@ node verify-handbook.mjs
 git ls-files docs guides case-studies prompts | xargs cat | wc -l    # 正文体量基线
 ```
 
-本手册的正文不接收外部提交的代码副本、密钥或可复现的攻击步骤。上面那条扫描命令会拒绝这类内容。权利方对内容有异议，请走 [issue](https://github.com/sqkl520/rea-handbook/issues)。
+本手册的正文不接收外部提交的代码副本、密钥或可复现的攻击步骤。`node verify-handbook.mjs` 能拦下密钥与敏感字面值，其余靠人工。权利方对内容有异议，请走 [issue](https://github.com/sqkl520/rea-handbook/issues)。
 
 ## License
 
@@ -364,8 +362,8 @@ MIT — 随便用，随便改。本仓库的 MIT 许可不涵盖任何商标的�
 <div align="center">
 
 **官方文档讲 REA 有什么命令。**<br>
-**这本手册讲你第一次会在哪一步撞上没写的事。**
+**本手册讲你第一次会在哪一步撞上没写的事。**
 
-*没列出来的，多半照样能跑。*
+*没列出来的，不代表不能用。*
 
 </div>
