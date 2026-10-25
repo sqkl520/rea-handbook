@@ -102,7 +102,7 @@ rea inspect-sqlite-database db.sqlite --table ItemTable --row-limit 15 --format 
 
 ---
 
-## 症状：`coverage.status = "unavailable"`，元数据超 64 MiB 预算（.NET）
+## 症状：`coverage.state = "unavailable"`，元数据超 64 MiB 预算（.NET）
 
 **你可能看到**：
 
@@ -617,14 +617,15 @@ provider 的操作"，零依赖能力不在其中**——包括最常用的：�
 警告或未解决问题**。本文实测的两个例子：
 
 1. `inspect-managed-members` 元数据超预算：退出码 0，但
-   `coverage.status = "unavailable"`；
+   `coverage.state = "unavailable"`（**.NET 域用 `state`**）；
 2. 大目标分析容量耗尽：退出码 0，有完整输出，但 `coverage.status = "partial"`
-   且带明确的未分析清单。
+   且带明确的未分析清单（**JavaScript / 图谱域用 `status`**）。
 
 所以每次都看这几个字段，不要只看退出码：
 
 ```text
-coverage.status                      complete / partial / unavailable / no-match
+coverage.state                       .NET 域（managed）：complete / partial / unavailable
+coverage.status                      JS / 图谱域：complete / partial / unavailable / no-match
 unknown_facts / unavailable_facts    未知与不可用事实的显式计数
 issues[]                             resource-limit 等明确问题
 limitations[]                        工具自己声明的局限

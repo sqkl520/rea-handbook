@@ -89,7 +89,7 @@ ilspycmd -p -o <输出目录> "<目标>"       # -p = 整个项目，产出可�
 
 # 3. 退路 A：REA 的逐类型提取（无反编译条件时用）
 #    ⚠️ 不要直接跑全量成员提取！较大程序集会失败：
-#       coverage.status = "unavailable"
+#       coverage.state = "unavailable"
 #       Managed metadata exceeds the 67108864 byte representation budget
 #    必须先知道类型全名，再逐个取：
 rea inspect-managed-members "<目标>" --type <精确类型全名> --format json

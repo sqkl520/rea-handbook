@@ -104,7 +104,7 @@ rea trace-application-feature trace-input.json --format json
 
 （注意：`normalized_result` 顶层**没有** `coverage`——它总在 `graph` / `semantic_graph` 里。）
 
-**实际例子**（【实测】）：OpenCode 桌面版 146 MB 的 `app.asar` 完整跑通（应用图谱层；semantic 层达 100,000 节点上限后截断，`status: partial`）——evidence 354 MB；图谱 **27,278 节点 / 32,977 边 / 7,823 条终端路径**；`statistics` 里 asar 相关文件 6,702、解析 JS 4,489、AST 节点 4,751,494、findings 30,648；`summary.ipc` 163 个操作 / 76 个字面量通道 / 81 个主进程 handler / 55 对配对。追踪 `kill-sidecar` 得到 renderer `out/preload/index.js:11`（invoke）↔ main `out/main/index.js:2069`（handle），并给出 5 个原生交接点（`@parcel/watcher`、`node-pty`、`msgpackr-extract` 等）。反例：ChatGPT 桌面版 567 MB ASAR 只分析到 3,757/16,197 个源文件就因"父进程结果容量耗尽"而 `normalized_result.graph.coverage.status = "partial"`。
+**实际例子**（【实测】）：OpenCode 桌面版 146 MB 的 `app.asar` 完整跑通（应用图谱层；semantic 层达 100,000 节点上限后截断，`status: partial`）——evidence 354 MB；图谱 **27,278 节点 / 32,977 边 / 7,823 条终端路径**；`statistics` 里 asar 相关文件 6,702、解析 JS 4,489、AST 节点 4,751,494、findings 30,648；`summary.ipc` 163 个操作 / 76 个字面量通道 / 81 个主进程 handler / 55 组配对。追踪 `kill-sidecar` 得到 renderer `out/preload/index.js:11`（invoke）↔ main `out/main/index.js:2069`（handle），并给出 5 个原生交接点（`@parcel/watcher`、`node-pty`、`msgpackr-extract` 等）。反例：ChatGPT 桌面版 567 MB ASAR 只分析到 3,757/16,197 个源文件就因"父进程结果容量耗尽"而 `normalized_result.graph.coverage.status = "partial"`。
 
 **注意事项**：
 
@@ -143,7 +143,7 @@ rea inspect-managed-native-boundaries "<你的程序>.exe" --format json
 rea compare-managed-members "<旧版本>.exe" "<新版本>.exe" --format json
 ```
 
-**`--type` 的坑**：全量成员解码有**独立的 64 MiB 表示预算**（不是文件大小上限）。PCL2 只有 5.5 MB，`inspect-managed-members` 全量仍然失败——`coverage.status = "unavailable"`，`issues[0] = {code:"resource-limit", scope:"metadata.representation", detail:"Managed metadata exceeds the 67108864 byte representation budget"}`（【实测】，证据在 `pcl2-members.json` 原文）。官方给的出路是"选已知的声明类型"（`docs/cli.md` 原文：`a declaring type name you already know`——它承认了这个门槛），**但没点破这个循环**（【我们的发现】）：`--type` 要求你知道精确类型全名，而全量失败时 REA 不会给你类型清单，所以第一步的清单得从别处来。拿类型名的可行手段：
+**`--type` 的坑**：全量成员解码有**独立的 64 MiB 表示预算**（不是文件大小上限）。PCL2 只有 5.5 MB，`inspect-managed-members` 全量仍然失败——`coverage.state = "unavailable"`，`issues[0] = {code:"resource-limit", scope:"metadata.representation", detail:"Managed metadata exceeds the 67108864 byte representation budget"}`（【实测】；原始输出未入库——那次的 PCL2 二进制已随自更新漂移，重跑对不上）。官方给的出路是"选已知的声明类型"（`docs/cli.md` 原文：`a declaring type name you already know`——它承认了这个门槛），**但没点破这个循环**（【我们的发现】）：`--type` 要求你知道精确类型全名，而全量失败时 REA 不会给你类型清单，所以第一步的清单得从别处来。拿类型名的可行手段：
 
 ```powershell
 # Windows PowerShell：不用加载执行，只读反射（实测用于 PCL2）

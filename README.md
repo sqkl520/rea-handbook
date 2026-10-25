@@ -86,7 +86,7 @@ npm install --global rea-agents   # 或：只装命令行，得到 rea 命令
 npx -y rea-agents <命令>          # 或：不装，每次一次性运行
 ```
 
-装完先跑 `rea doctor`，确认本机哪些能力可用。`healthy: false` 很常见，原因和怎么判断见下文「手册里几个最有价值的发现」的最后一条。`node verify-handbook.mjs` 是另一回事——它查的是这份手册本身有没有坏，不是查你的安装。
+装完先跑 `rea doctor`，确认本机哪些能力可用。`healthy: false` 很常见——原因和怎么判断见下文「手册里几个最有价值的发现」末尾那段「顺带一条最容易误判的」。`node verify-handbook.mjs` 是另一回事——它查的是这份手册本身有没有坏，不是查你的安装。
 
 前置是 Node.js 22.19+ / 24.11+ / 26+（不支持 23、25 及 prerelease），这是 REA **6.5.0** 的 `package.json` 里 `engines` 字段原文：`^22.19.0 || ^24.11.0 || >=26.0.0`。**6.8.0 已抬到 `^22.23.4 || ^24.22.1 || >=26.12.1`**，装新版前先 `node --version`。大部分能力零依赖：静态分析 JavaScript/Electron、Go/Rust 二进制、.NET 程序集、PE 资源、Electron fuses 等，只要 Node.js；需要 Ghidra/Hopper/IDA 的只有原生二进制反编译一类。SQLite 另有更严的门槛，见下文「手册里几个最有价值的发现」。
 
@@ -102,12 +102,12 @@ npx -y rea-agents <命令>          # 或：不装，每次一次性运行
 
 | 你的处境 | 翻哪一篇 | 可复算的规模 |
 | --- | --- | --- |
-| 第一次装，不知道先跑哪条命令 | [docs/01-getting-started.md §1](docs/01-getting-started.md#1-rea-是什么) | `wc -l < docs/01-getting-started.md` → 738 |
+| 第一次装，不知道先跑哪条命令 | [docs/01-getting-started.md §1](docs/01-getting-started.md#1-rea-是什么) | `wc -l < docs/01-getting-started.md` → 741 |
 | 要把 REA 接进你的 AI agent | [docs/02-agent-integration.md §一条命令](docs/02-agent-integration.md#一条命令搞定推荐) | — |
 | 手上有个目标，不知道该用哪个命令 | [guides/by-target-type.md §速查表](guides/by-target-type.md#目标类型速查) | 11 类目标，其中 6 类零依赖 |
-| 命令报错了，或结果看不懂 | [guides/troubleshooting.md §症状](guides/troubleshooting.md#症状error-cannot-create-a-string-longer-than-0x1fffffe8-characters) | 14 种症状，680 行 |
+| 命令报错了，或结果看不懂 | [guides/troubleshooting.md §症状](guides/troubleshooting.md#症状error-cannot-create-a-string-longer-than-0x1fffffe8-characters) | 14 种症状，681 行 |
 | 想看真实产出长什么样 | [case-studies/README.md §案例一](case-studies/README.md#案例一pcl2--从-il-里读出一个启动器的完整架构) | 3 个案例，5.5 / 146 / 567 MB |
-| 想让 AI 替你做分析 | [prompts/README.md §怎么用](prompts/README.md#怎么用) | 2 份模板 |
+| 想让 AI 替你做分析 | [prompts/README.md §怎么用](prompts/README.md#怎么用) | 2 个文件 / 3 份提示词 |
 | REA 覆盖不到的角度，要自己写解析 | [tools/README.md §脚本清单](tools/README.md#脚本清单) | 15 个脚本，1,261 行 |
 
 一句话分工：README 只管“凭什么信”和“从哪进”，具体内容由各目录自己的 README 承担，两边不重复写。
@@ -117,7 +117,7 @@ npx -y rea-agents <命令>          # 或：不装，每次一次性运行
 ```bash
 grep -E '^\| [0-9]+ \|' guides/by-target-type.md | wc -l          # → 11 类目标
 grep -E '^\| [0-9]+ \|' guides/by-target-type.md | grep -c 零依赖  # → 其中 6 类
-wc -l < guides/troubleshooting.md                                  # → 680 行
+wc -l < guides/troubleshooting.md                                  # → 681 行
 git ls-files 'tools/*.cjs' | xargs wc -l | tail -1                  # → 1261 行 / 15 个脚本
 ```
 
@@ -205,9 +205,9 @@ grep -n "枚举全表" case-studies/pcl2.md                 # → 第 1972 行�
 | .NET 表示预算 | 64 MiB（`67108864`） | `inspect-managed-members` 全量提取 | 写了预算、也给了 `--type` 出路，但没说全量失败时你拿不到类型清单（而拿不到清单就填不出 `--type`） |
 | semantic 层节点上限 | 默认 100,000，可调到 1,000,000 | 大图谱的 semantic 层，`status: partial` | 写了默认值与 `--max-semantic-nodes` 的调节范围（1–1,000,000）。但**这是可调默认值，不是硬墙** |
 | 父进程结果容量 | 视目标而定 | 567 MB 归档停在 3,757 / 16,197 个源文件 | 写了资源耗尽时不终止进程、已完成事实保留、`partial coverage`；但没给“这个体量大概停在哪”的量级预期 |
-| 退出码语义 | 0 | 64 MiB 预算失败时退出码仍是 0，`coverage.status = "unavailable"` | 有退出码表，也提过 "result may include partial evidence"。但两句话隔着好几页 |
+| 退出码语义 | 0 | 64 MiB 预算失败时退出码仍是 0，`coverage.state = "unavailable"` | 有退出码表，也提过 "result may include partial evidence"。但两句话隔着好几页 |
 
-64 MiB 那条值得单说：文件只有 5.5 MB，全量成员提取照样失败。`coverage.status = "unavailable"`，`detail` 里写着超出 `67108864` 字节。这 64 MiB 不是文件大小上限，是一条独立的表示预算。反向反例也测过：3.4 MB 的 `System.dll`（`Microsoft.NET/Framework64/v4.0.30319`，sha256 `4ad37405…`）同样撑爆它。
+64 MiB 那条值得单说：文件只有 5.5 MB，全量成员提取照样失败。`coverage.state = "unavailable"`，`detail` 里写着超出 `67108864` 字节。这 64 MiB 不是文件大小上限，是一条独立的表示预算。反向反例也测过：3.4 MB 的 `System.dll`（`Microsoft.NET/Framework64/v4.0.30319`，sha256 `4ad37405…`）同样撑爆它。
 
 复算：`grep -n "67108864" guides/by-target-type.md` → 第 146 行；`grep -n "67108864" guides/troubleshooting.md` → 112 与 120 行。
 
@@ -285,7 +285,7 @@ rea-handbook/
 ├── case-studies/                    # 7 个文件：PCL2 / ChatGPT 桌面版 / OpenCode + 索引 + 证据
 │   └── evidence/                    #   ★ 一手证据：2 份追踪摘要 + 读法说明
 │                                    #     案例里的数字可以直接从这里读出来核对
-├── prompts/                         # 3 个文件：完整版与纯学习版提示词模板
+├── prompts/                         # 3 个文件，装 3 份提示词（`-minimal.md` 里有两份）
 └── tools/                           # 16 个文件：15 个分析脚本 + 清单
 ```
 
@@ -299,11 +299,11 @@ git ls-files 'tools/*.cjs' | wc -l                # → 15 个脚本
 
 | 目录 | 文件数 | 行数 |
 | --- | --- | --- |
-| `docs/` | 3 | 1,073 |
-| `guides/` | 3 | 1,313 |
-| `case-studies/` | 5 | 4,570 |
+| `docs/` | 3 | 1,076 |
+| `guides/` | 3 | 1,314 |
+| `case-studies/` | 5 | 4,578 |
 | `prompts/` | 3 | 669 |
-| 合计 | 14 | 7,625 |
+| 合计 | 14 | 7,637 |
 
 这 15 个脚本只 `require` Node 内置模块，仓库里没有 `package.json`，也没有 `node_modules`。克隆后直接 `node tools/asar-peek.cjs <app.asar> package.json` 就能跑：
 

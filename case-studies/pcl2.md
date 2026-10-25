@@ -2178,7 +2178,7 @@ Output() → MyMsgBox("Minecraft 出现错误" / "错误报告分析结果")
 ---
 ---
 
-## 9. UI 架构（概要，详见 UI 专章）
+## 9. UI 架构（概要）
 
 ### 9.1 自研 WPF 控件库（`My*` 系列，40+ 个）
 
@@ -2630,7 +2630,7 @@ DragHelper.MAX_PATH          = 260
 `BCryptImportKeyPair` + `BCryptVerifySignature` 的**实际密钥**。
 它用于验证更新包签名（防中间人替换）。
 
-**`OAuthClientId`** 是微软登录用的应用注册 ID（§6.2 的 6 步流程的起点）。
+**`OAuthClientId`** 是微软登录用的应用注册 ID（相关处理见 §6.8 预启动阶段写 `launcher_profiles.json` 那一段）。
 
 **埋点走腾讯云 CLS**（`ap-shanghai` 区域）——**不是 Google Analytics 或第三方**。
 这符合 PCL2 一贯的"数据尽量留在国内、依赖尽量自建"的取向。
@@ -3562,7 +3562,7 @@ https://easytier.meloong.com/?page=1&per_page=1000     ← 同一列表的备用
    - 合并去重 → 共享资源只下一次
    - 分析失败 vs 下载失败可分别重试
 
-3. **版本化资产而非布尔标记**（§12.4 的 `Versions` 枚举）——
+3. **版本化资产而非布尔标记**（§12.4 的 `Versions` 静态类）——
    ```vb
    Versions: PotatoVersion, LocalModCacheVersion,
              McInstanceCacheVersion, JavaConfigVersion

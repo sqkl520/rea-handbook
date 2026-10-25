@@ -610,12 +610,15 @@ rea inspect-artifact "<路径>" --token-count
 | `128 + N` | 信号 `N` 结束了进程 |
 
 所以**成功要以两个信号交叉判断**：退出码看"命令跑没跑完"，
-`coverage.status`（在结果里）看"结果完整不完整"。
+`coverage`（在结果里）看"结果完整不完整"。
 
-常见 `coverage.status` 取值：
+**注意字段名分域**——.NET 用 `state`，其余用 `status`：
 
-- JS/Electron 应用分析：`complete` / `partial` / `unknown` / `unavailable`；
-- artifact 检查（`inspect-artifact`）：`complete-within-substeps` / `partial` / `truncated`。
+- `coverage.state`（.NET / managed 域）：`complete` / `partial` / `unavailable`；
+- `coverage.status`（JS/Electron 应用分析）：`complete` / `partial` / `unknown` / `unavailable`；
+- `coverage.status`（artifact 检查 `inspect-artifact`）：`complete-within-substeps` / `partial` / `truncated`。
+
+看之前先确认这条命令属于哪个域，否则会拿 `status` 去查 `.NET` 结果、读到一个不存在的字段。
 
 看到 `partial` 不是"坏了"——REA 会把**哪些没做完、为什么**写进结果
 （`limitations`、`unknown_facts` 等字段），这正是它的设计。
