@@ -473,7 +473,7 @@ rea providers --format json
 - **ELF 虚拟地址 ≠ 文件偏移**：Ghidra 可能对 PIE ELF 重定基（官方文档的验证样例：ELF 入口 `0x1013` 变成 Ghidra 过程 `0x101013`，镜像基址 `0x100000`），这不是通用换算规则。需要时用 `address-to-file-offset` 或 `--file-offset`（仅限 `decompile`）。
 - 取消活动请求会终止临时数据库并丢弃注释；有 metadata 编辑的会话不能保存快照（用 `evidence-export` 保留成果）。
 - 同一目标的 PDB 不会被采纳（REA 导入私有副本，不搜索符号服务器）。
-- macOS 上可直接把 `.app` 包传给 `analyze`。Hopper 的掩码字节搜索尚未验证（`capabilities` 明确报 unavailable）。
+- macOS 上可直接把 `.app` 包传给 `analyze`。注意源码里 `isJavaScriptApplicationPath()` 对 `.app` **明确返回 false**——它不走 JS lane，会按原生二进制处理。要分析 Electron 应用的 JS，请指向里面的 `Contents/Resources/app.asar`。Hopper 的掩码字节搜索尚未验证（`capabilities` 明确报 unavailable）。
 
 ---
 

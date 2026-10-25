@@ -471,9 +471,9 @@ inventory:
 | Flutter APK | Dart snapshot hash、每 ABI 库摘要、engine 构建 provenance | `rea identify-flutter-build <apk>` |
 | HarmonyOS 包（`.hap`/`.hsp`/`.app`） | 包识别与组件 inventory | `rea inspect-artifact <包路径>` |
 | 通用制品（ZIP/APK/IPA/asar/PE/ELF/Mach-O…） | 清单、哈希、结构、下一步探针 | `rea inspect-artifact <路径>`、`rea extract-artifact <路径>`（**目录**请用 `rea analyze <目录>`） |
-| Mach-O dylib 解析 | load commands + dyld 路径展开（纯 TypeScript，跨平台） | `rea trace-dylib-resolution` |
-| 网站被动观察（CDP） | 页面结构、脚本、网络观察、请求的截图 | `rea list-browser-targets`、`inspect-web-page`、`analyze-web-bundle`（需 Chrome 系浏览器，自行启动带调试端口） |
-| HAR / SAZ 网络捕获 | 请求、响应、暴露的载荷、来源位置 | `rea inspect-web-network-capture` |
+| Mach-O dylib 解析 | load commands + dyld 路径展开（纯 TypeScript，跨平台） | `rea trace-dylib-resolution <路径>` |
+| 网站被动观察（CDP） | 页面结构、脚本、网络观察、请求的截图 | `rea list-browser-targets <cdp-endpoint>` → `rea inspect-web-page <cdp-endpoint> <target-id>`、`rea analyze-web-bundle <路径>`（需 Chrome 系浏览器，自行启动带调试端口） |
+| HAR / SAZ 网络捕获 | 请求、响应、暴露的载荷、来源位置 | `rea inspect-web-network-capture <文件> <har\|mitmproxy\|saz\|qlog>` |
 | SQLite 快照 | 表、列、索引、视图、触发器、行样例 | `rea inspect-sqlite-database`（注意 Node 24.15+/26+ 门槛，见 2.2） |
 
 ### ⚠️ `rea capabilities` 不是完整能力清单
@@ -493,8 +493,15 @@ SQLite 因 Node 版本门槛报 `unsupported_version`。）
 
 **一个高频必踩项（Electron/JS 打包产物）**：官方完整性策略默认是
 `fail`——打包工具常会签名/剥离文件，导致哈希校验失败、整个分析中止。
-对这类目标加 `--integrity-policy record-and-continue`（在结果里记录差异但继续分析）。
-三份案例研究里的 Electron 应用都用了这个选项。
+
+**什么时候该加 `--integrity-policy record-and-continue`**：
+目标旁边存在 `<应用>.asar.unpacked/` 目录时基本都要加（说明有原生库或资源被剥离出去了）；
+或者你只想先看结构、不想因为一处哈希不符就整份中止。
+
+加了的代价要说清（官方定义）：结果里 `coverage` 会标 **partial**，
+每个矛盾的路径会进 `limitations`，同时保留**声明哈希与实际哈希**两列，
+信任级别记为 `observed-untrusted`——即“读了，但这些字节不可信”。
+它**不是**把校验关掉，是把“中止”换成“读并记账”。三份案例研究里的 Electron 应用都用了这个选项。
 
 ### 需要原生引擎的部分（本节仅作预告）
 

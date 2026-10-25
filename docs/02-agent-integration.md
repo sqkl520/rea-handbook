@@ -69,6 +69,15 @@ rea setup --yes --all-detected
 rea setup --json
 ```
 
+> ⚠️ **无 TTY 时不会落地**。`rea setup --client claude_code` 在脚本/CI 里跑，
+> 判定为“未获批准的实际应用”，报 `needs_confirmation` 并**退出 1，零改动**。
+> 要真的写盘，显式加 `--yes`（并配一个明确的作用域，如 `--client codex`）。
+> `--yes` 不带作用域时只处理已存在的 REA 注册，不会选中全部检测到的客户端。
+
+各客户端写盘的格式并不通用（Codex 是 TOML 的 `[mcp_servers.rea]` 且需要
+`startup_timeout_sec = 30`；VS Code 用 `servers` 键而非 `mcpServers`，还要 `"type": "stdio"`）。
+**这也是为什么推荐用 `rea setup` 而不是手写配置**——这些差异由 REA 自己处理。
+
 **注意**：`--yes` 单独用时**只限于已有的 REA 注册**，不会选中所有检测到的 agent。
 要广覆盖必须显式加 `--all-detected`。
 

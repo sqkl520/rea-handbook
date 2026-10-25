@@ -571,6 +571,17 @@ console.log('\n【9】README 自述统计');
       const actual = readFileSync(p, 'utf8').split('\n').length - 1;
       claims.push([`wc -l < ${rel}`, num(m[2]), actual]);
     }
+
+    // 表格单元格里的写法：`wc -l < docs/xx.md` → 719
+    // （没有 # 也没有"行"字，上面那条正则抓不到——docs/01 就靠这个格式
+    //  从 719 漂到 731 而无人发现）
+    const wcCellRe = /`wc -l\s*<\s*([A-Za-z0-9_./-]+)`\s*→\s*([\d,]+)/g;
+    for (const m of readme.matchAll(wcCellRe)) {
+      const p = join(ROOT, m[1]);
+      if (!existsSync(p)) continue;
+      const actual = readFileSync(p, 'utf8').split('\n').length - 1;
+      claims.push([`表格 wc -l < ${m[1]}`, num(m[2]), actual]);
+    }
   }
 
   // ── tools 脚本的行数与数量 ──
