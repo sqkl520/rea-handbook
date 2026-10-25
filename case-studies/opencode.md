@@ -115,7 +115,7 @@ rea inspect-analysis-view view.json --format json
 ```
 tools/
   build-trace-input.cjs   ← 从保存的 evidence 构造追踪输入
-  explore-evidence.cjs    ← 探查 evidence 结构（不加载全部到内存两次）
+  explore-evidence.cjs    ← 探查 evidence 结构（一次解析整份，几百 MB 以上别用）
   find-channels.cjs       ← 在 evidence 树里定位 IPC 通道数据
 
 evidence/

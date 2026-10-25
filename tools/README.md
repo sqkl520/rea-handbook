@@ -64,7 +64,7 @@ REA 已经覆盖了很多场景，但有几类事它（或任何工具）做不�
 | 脚本 | 用途 | 用法 |
 | --- | --- | --- |
 | `build-trace-input.cjs` | 从保存的 evidence 构造功能追踪的输入 | `node build-trace-input.cjs <evidence.json> <out.json> string <种子>` |
-| `explore-evidence.cjs` | 探查 evidence 的顶层结构（不重复加载） | `node explore-evidence.cjs <evidence.json>` |
+| `explore-evidence.cjs` | 探查 evidence 的顶层结构（一次 `JSON.parse` 后遍历，不做流式） | `node explore-evidence.cjs <evidence.json>` |
 | `find-channels.cjs` | 在 evidence 树里定位 IPC 通道数据 | `node find-channels.cjs <evidence.json>` |
 | `rea-type-view.cjs` | 把 REA 的 `--type` 输出渲染成紧凑视图 | `node rea-type-view.cjs <rea-output.json>` |
 
@@ -94,7 +94,7 @@ node asar-get.cjs "<app.asar>" --dir:webview/apps
 | --- | --- |
 | **路径分隔符** | 脚本接受 `/` 和 `\` 两种写法（Node 在 Windows 上都能处理） |
 | **Git Bash 参数转换** | MSYS 会把 `/webview/apps` 改写成 `D:/Git/webview/apps`。`asar-get.cjs` 会自动还原这种改写；其他脚本对 `/` 开头的归档内路径建议加 `MSYS_NO_PATHCONV=1`（但它同时会阻止 `/c/...` 这类主机路径转换，此时主机路径请写成 `C:/...`）。**macOS / Linux 无此类转换问题**，直接运行即可 |
-| **文件大小** | `explore-evidence.cjs` 会把 JSON 解析进内存。**超过 ~500 MB 的文件不要用**（Node 有单字符串 512 MiB 硬上限） |
+| **文件大小** | 有四个脚本会把整个 JSON 一次解析进内存：`explore-evidence.cjs`、`find-channels.cjs`、`build-trace-input.cjs`、`rea-type-view.cjs`。**超过 ~500 MB 的文件不要用它们**（Node 有单字符串 512 MiB 硬上限，超了直接 `ERR_STRING_TOO_LONG`）。这个体量请走 `jq` 流式投影，或先用 REA 的 `--filter-output` 缩小输出。 |
 
 ## 自己写脚本的建议
 

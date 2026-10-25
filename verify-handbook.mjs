@@ -15,12 +15,32 @@ const warn = (msg) => { console.log('  ⚠️  ' + msg); problems++; };
 const ok = (msg) => console.log('  ✅ ' + msg);
 const info = (msg) => console.log('  ·  ' + msg);
 
-// ── 收集所有文本文件（md + 脚本 + 配置），跳过内部文件与 .git ──
+// ── 收集所有文本文件（md + 脚本 + 配置），只取"会进仓库"的那些 ──
+// 只扫 git 跟踪 + 未被忽略的文件，而不是磁盘上的一切：
+//  · 内部文件（_readme-project/、_internal/、_publish-checklist.md）被 .gitignore 挡在
+//    仓库之外，扫它们没有意义，还会因为含有历史敏感词而误报。
+//  · 反过来，凡是能进仓库的文件一律要扫——所以这里不能再跳过 "_" 开头的名字。
+//    曾经那样跳过，配上只忽略一个下划线文件的 .gitignore，等于给 _notes.md 开了后门。
 const TEXT_EXT = /\.(md|mjs|cjs|js|json|txt|yml|yaml)$/;
+let gitFiles = null;
+try {
+  const tracked = execFileSync('git', ['ls-files', '-z'], { cwd: ROOT, encoding: 'utf8' })
+    .split('\0')
+    .filter(Boolean);
+  // 未跟踪但没被忽略的新文件也要扫（提交前跑一次就能拦住）
+  const untracked = execFileSync('git', ['ls-files', '-z', '--others', '--exclude-standard'], {
+    cwd: ROOT,
+    encoding: 'utf8',
+  })
+    .split('\0')
+    .filter(Boolean);
+  gitFiles = new Set([...tracked, ...untracked].map((f) => f.split('\\').join('/')));
+} catch {
+  /* 不在 git 工作区（比如从 zip 解压的副本），退回全盘遍历 */
+}
 function walk(dir, out = []) {
   for (const name of readdirSync(dir)) {
     if (name === '.git' || name === 'node_modules') continue;
-    if (name.startsWith('_')) continue;   // 跳过内部文件（如 _publish-checklist.md）
     const p = join(dir, name);
     const st = statSync(p);
     if (st.isDirectory()) walk(p, out);
@@ -28,7 +48,9 @@ function walk(dir, out = []) {
   }
   return out;
 }
-const files = walk(ROOT);
+const files = gitFiles
+  ? walk(ROOT).filter((f) => gitFiles.has(relative(ROOT, f).split('\\').join('/')))
+  : walk(ROOT);
 const mdFiles = files.filter((f) => f.endsWith('.md'));
 console.log(`\n扫描 ${files.length} 个文本文件（其中 ${mdFiles.length} 个 Markdown）\n`);
 

@@ -38,4 +38,9 @@ desktop.ini
 *.tmp
 *.log
 .cache/
-_publish-checklist.md
+
+# 内部工作文件：一律不进仓库。
+# 以前只忽略了 _publish-checklist.md 这一个文件，其余的 _*.md 会被提交，
+# 而 verify-handbook.mjs 又跳过所有 "_" 开头的文件——两者叠加等于给敏感内容开了后门。
+_*
+
