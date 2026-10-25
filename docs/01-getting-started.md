@@ -45,6 +45,17 @@ REA 返回的不只是反编译文本，还有模块关系、IPC 配对、构建
 
 ### 2.1 Node.js 版本（精确范围）
 
+> **⚠️ 本节已随上游发布两次抬升。** 下方表格是 **REA 6.5.0** 的要求，手册正文也以 6.5.0 为基线。
+> **REA 6.8.0（2026-10-25）把门槛提高了**：
+>
+> ```text
+> 6.5.0: ^22.19.0 || ^24.11.0 || >=26.0.0
+> 6.8.0: ^22.23.4 || ^24.22.1 || >=26.12.1
+> ```
+>
+> 也就是说，6.5.0 时代可用的 22.19–22.22、24.11–24.21、26.0–26.11 **在 6.8.0 上全部不可用**。
+> 装新版之前先 `node --version`；本节的交叉区间表只对 6.5.0 成立。
+
 REA 6.5.0 要求的 Node.js 版本是 **精确的三段区间**（来自 `package.json` 的 `engines`）：
 
 ```text
@@ -348,8 +359,9 @@ rea doctor --skill --json                  # 验证已安装的 skill 身份
 
 两个实测确认的坑，不要踩：
 
-- `doctor --provider` **只接受** `hopper`、`ghidra`、`ida`、`jadx` 四个 id。
-  传别的（如 `pwntools-elf`）报 `VALIDATION_ERROR` 并列出合法值。
+- `doctor --provider` 在 **6.5.0 接受** `hopper`、`ghidra`、`ida`、`jadx` 四个 id；
+  **6.8.0 起多了第五个 `kuna`**。传别的（如 `pwntools-elf`）报 `VALIDATION_ERROR` 并列出合法值——
+  拿不准就故意传一个错值，让它告诉你当前版本接受哪些。
 - `doctor` **不接受 `--dry-run`**——会报 `Unknown flag: --dry-run`。
   `--dry-run` 是 `setup` 的选项。
 

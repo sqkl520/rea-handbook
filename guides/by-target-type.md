@@ -422,7 +422,7 @@ REA_JS="<npm 全局目录>/node_modules/rea-agents/scripts/rea.mjs"
 **通用流程**（以 Ghidra 为例）：
 
 ```bash
-# 1) 配置与诊断（doctor --provider 只接受 hopper|ghidra|ida|jadx 四个 id）
+# 1) 配置与诊断（6.5.0: hopper|ghidra|ida|jadx；6.8.0 起多一个 kuna）
 export GHIDRA_INSTALL_DIR=/absolute/path/to/ghidra_12.1.4_PUBLIC
 export JAVA_HOME=/absolute/path/to/jdk-21        # java/javac 在 PATH 上时可省
 rea doctor --provider ghidra --format json

@@ -88,7 +88,7 @@ npx -y rea-agents <命令>          # 或：不装，每次一次性运行
 
 装完先跑 `rea doctor`，确认本机哪些能力可用。`healthy: false` 很常见，原因和怎么判断见下文「手册里几个最有价值的发现」的最后一条。`node verify-handbook.mjs` 是另一回事——它查的是这份手册本身有没有坏，不是查你的安装。
 
-前置是 Node.js 22.19+ / 24.11+ / 26+（不支持 23、25 及 prerelease），这是 REA 的 `package.json` 里 `engines` 字段原文：`^22.19.0 || ^24.11.0 || >=26.0.0`。大部分能力零依赖：静态分析 JavaScript/Electron、Go/Rust 二进制、.NET 程序集、PE 资源、Electron fuses 等，只要 Node.js；需要 Ghidra/Hopper/IDA 的只有原生二进制反编译一类。SQLite 另有更严的门槛，见下文「手册里几个最有价值的发现」。
+前置是 Node.js 22.19+ / 24.11+ / 26+（不支持 23、25 及 prerelease），这是 REA **6.5.0** 的 `package.json` 里 `engines` 字段原文：`^22.19.0 || ^24.11.0 || >=26.0.0`。**6.8.0 已抬到 `^22.23.4 || ^24.22.1 || >=26.12.1`**，装新版前先 `node --version`。大部分能力零依赖：静态分析 JavaScript/Electron、Go/Rust 二进制、.NET 程序集、PE 资源、Electron fuses 等，只要 Node.js；需要 Ghidra/Hopper/IDA 的只有原生二进制反编译一类。SQLite 另有更严的门槛，见下文「手册里几个最有价值的发现」。
 
 然后在 agent 里直接说话：
 
@@ -105,7 +105,7 @@ npx -y rea-agents <命令>          # 或：不装，每次一次性运行
 | 第一次装，不知道先跑哪条命令 | [docs/01-getting-started.md §1](docs/01-getting-started.md#1-rea-是什么) | `wc -l < docs/01-getting-started.md` → 719 |
 | 要把 REA 接进你的 AI agent | [docs/02-agent-integration.md §一条命令](docs/02-agent-integration.md#一条命令搞定推荐) | — |
 | 手上有个目标，不知道该用哪个命令 | [guides/by-target-type.md §速查表](guides/by-target-type.md#目标类型速查) | 11 类目标，其中 6 类零依赖 |
-| 命令报错了，或结果看不懂 | [guides/troubleshooting.md §症状](guides/troubleshooting.md#症状error-cannot-create-a-string-longer-than-0x1fffffe8-characters) | 14 种症状，679 行 |
+| 命令报错了，或结果看不懂 | [guides/troubleshooting.md §症状](guides/troubleshooting.md#症状error-cannot-create-a-string-longer-than-0x1fffffe8-characters) | 14 种症状，680 行 |
 | 想看真实产出长什么样 | [case-studies/README.md §案例一](case-studies/README.md#案例一pcl2--从-il-里读出一个启动器的完整架构) | 3 个案例，5.5 / 146 / 567 MB |
 | 想让 AI 替你做分析 | [prompts/README.md §怎么用](prompts/README.md#怎么用) | 2 份模板 |
 | REA 覆盖不到的角度，要自己写解析 | [tools/README.md §脚本清单](tools/README.md#脚本清单) | 14 个脚本，1,146 行 |
@@ -117,7 +117,7 @@ npx -y rea-agents <命令>          # 或：不装，每次一次性运行
 ```bash
 grep -E '^\| [0-9]+ \|' guides/by-target-type.md | wc -l          # → 11 类目标
 grep -E '^\| [0-9]+ \|' guides/by-target-type.md | grep -c 零依赖  # → 其中 6 类
-wc -l < guides/troubleshooting.md                                  # → 679 行
+wc -l < guides/troubleshooting.md                                  # → 680 行
 git ls-files 'tools/*.cjs' | xargs wc -l | tail -1                  # → 1146 行 / 14 个脚本
 ```
 
@@ -279,6 +279,7 @@ rea-handbook/
 ├── README.md                        # 你正在读的这份：凭什么信 + 从哪进
 ├── LICENSE / NOTICE.md              # MIT 全文（纯模板）／归属、商标、第三方工具清单
 ├── verify-handbook.mjs              # 链接 + 合规 + 占位符 + 结构 + 行号断言 + 证据核对 + 锚点核对 + 自述统计
+├── verify-rea-surface.mjs           # 对着已装/最新 REA 核对命令名、--provider id、Node 版本区间
 ├── docs/                            # 3 个文件：入门、agent 接入、目录页
 ├── guides/                          # 3 个文件：11 类目标怎么做、14 种症状怎么救
 ├── case-studies/                    # 7 个文件：PCL2 / ChatGPT 桌面版 / OpenCode + 索引 + 证据
@@ -298,11 +299,11 @@ git ls-files 'tools/*.cjs' | wc -l                # → 14 个脚本
 
 | 目录 | 文件数 | 行数 |
 | --- | --- | --- |
-| `docs/` | 3 | 1,043 |
-| `guides/` | 3 | 1,312 |
+| `docs/` | 3 | 1,055 |
+| `guides/` | 3 | 1,313 |
 | `case-studies/` | 5 | 4,570 |
 | `prompts/` | 3 | 669 |
-| 合计 | 14 | 7,594 |
+| 合计 | 14 | 7,607 |
 
 这 14 个脚本只 `require` Node 内置模块，仓库里没有 `package.json`，也没有 `node_modules`。克隆后直接 `node tools/asar-peek.cjs <app.asar> package.json` 就能跑：
 
@@ -332,9 +333,20 @@ node verify-handbook.mjs        # 【1】链接 【2】合规 【3】占位符 �
 
 它一次查这几项：相对链接是否都通、有没有敏感内容残留、有没有没填完的占位符、必需文件在不在位；正文里「某文件第 N 行」的说法是否还对得上（被引文件一改行号就漂，而你是按行号跳的）；案例数字与仓库里那两份证据是否一致；每个 `#锚点` 是否真的落在某个标题上（中文标题带全角标点时 GitHub 会把标点整个删掉，改一个字锚点就静默 404，而“链接全绿”仍然通过）；以及下面「仓库结构」里那些文件数和行数是否还对得上当前仓库（加文件时最容易忘的就是这张表）。
 
+**它只查仓库内部自洽，不查 REA。** 命令被上游改名、`--provider` 多了个 id、Node 门槛抬高——这三类它一处都发现不了。补上这一半的是另一个脚本：
+
+```bash
+node verify-rea-surface.mjs              # 默认拉 npm 上最新版对照
+node verify-rea-surface.mjs --rea <包目录>  # 或对本地已装的版本（离线）
+```
+
+它从包里读出命令清单、`doctor --provider` 的 id 列表、`engines.node`，再和正文里出现的每一次引用比对。下文里的 Node 版本区间、`--provider` 的名字、`rea xxx` 的命令名，都由它守。
+
 ## 这本手册会过期，也有些事它做不到
 
-- **会过期**。全部内容基于 REA 6.5.0，而 REA 更新很快。行为漂移是常态——现在复跑对不上，正常。
+- **会过期，而且已经部分过期**。全部内容基于 REA **6.5.0**（2026-10-14）。截至 2026-10-25，上游已发到 **6.8.0**，中间还有 6.7.0。
+  已确认失效的两处：**Node 版本要求**（6.8.0 抬到 `^22.23.4 || ^24.22.1 || >=26.12.1`）和 **`doctor --provider` 的 id 列表**（6.8.0 新增 `kuna`，共 5 个）。
+  命令本身没有删除、没有改名，所以其余内容仍可参照。行为漂移是常态——复跑对不上，正常。
 - **`rea capabilities` 的输出本身不完整**，本手册据它写的“哪些可用”也跟着不完整。
 - **567 MB 那个案例只完成了一部分**。分析到 3,757 / 16,197 个源文件就停了；它证明的是“超大目标怎么降级处理”，不是“什么规模都能跑通”。
 - **原生二进制反编译不在本手册范围内**。那条路要 Ghidra / Hopper / IDA，而且平台限制不少：Windows 上 Hopper 不可用、Ghidra 仅实验性支持、固件等类型多为 Linux-only。
