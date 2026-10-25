@@ -607,7 +607,7 @@ rea providers --format json     # 同一份 catalog 身份摘要
 
 ```bash
 rea doctor --format json                          # 全量审计
-rea doctor --provider ghidra --format json        # 只看一个引擎（只接受 hopper|ghidra|ida|jadx）
+rea doctor --provider ghidra --format json        # 只看一个引擎（6.8.0 接受 hopper|ghidra|ida|jadx|kuna）
 rea doctor --client claude_code --format json     # 只看一个 agent 注册
 rea doctor --target "<你的目标>" --format json     # 附加目标检查（仍是审计级报告，除非同时给 scope 选项）
 ```

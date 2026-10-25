@@ -375,7 +375,8 @@ rea doctor --skill --json                  # 验证已安装的 skill 身份
 
 两个实测确认的坑，不要踩：
 
-- `doctor --provider` 在 **6.8.0 接受** `hopper`、`ghidra`、`ida`、`jadx`、`kuna` 五个 id。
+- `doctor --provider` 在 **6.5.0 接受 4 个**（`hopper`/`ghidra`/`ida`/`jadx`），
+  **6.7.0 起变成 5 个**（多了 `kuna`）。注意 npm 上没有 6.6.0，版本是从 6.5.0 直接跳到 6.7.0 的。
   传别的（如 `pwntools-elf`）报 `VALIDATION_ERROR` 并列出合法值——
   拿不准就故意传一个错值，让它告诉你当前版本接受哪些。
 - `doctor` **不接受 `--dry-run`**——会报 `Unknown flag: --dry-run`。

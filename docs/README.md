@@ -9,7 +9,7 @@ REA 使用手册的正文——从这里开始。
 
 读完这两篇，操作细节去 [guides/](../guides/)：
 [by-target-type.md](../guides/by-target-type.md) 是 **11 类目标的速查表**（知道要分析什么就来这查命令），
-[troubleshooting.md](../guides/troubleshooting.md) 是 **14 种症状的排查手册**（卡住了来这查）。
+[troubleshooting.md](../guides/troubleshooting.md) 是 **15 种症状的排查手册**（卡住了来这查）。
 想看真实产出直接翻 [case-studies/](../case-studies/)。
 
 > 本手册是第三方材料，基于 REA 6.8.0 编写。官方文档是权威：

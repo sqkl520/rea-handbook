@@ -46,7 +46,7 @@ Error: Cannot create a string longer than 0x1fffffe8 characters
 ```
 
 官方材料里同时放着对的做法（`jq -c` 流式投影）和会崩的做法，但两个示例都没标各自适用的体量，多大的 evidence 该走哪条要自己拼。
-本手册补的就是这些：14 种症状、11 类目标、21 处【实测】标注，每个结构数旁边都留了能跑出它的命令。
+本手册补的就是这些：15 种症状、11 类目标、21 处【实测】标注，每个结构数旁边都留了能跑出它的命令。
 
 有两件事别混：**读这本手册**只要 Git，**跑手册里的命令**才要装 REA。
 
@@ -106,10 +106,10 @@ npx -y rea-agents <命令>          # ③ 不装：每次一次性运行，机�
 
 | 你的处境 | 翻哪一篇 | 可复算的规模 |
 | --- | --- | --- |
-| 第一次装，不知道先跑哪条命令 | [docs/01-getting-started.md §1](docs/01-getting-started.md#1-rea-是什么) | `wc -l < docs/01-getting-started.md` → 757 |
+| 第一次装，不知道先跑哪条命令 | [docs/01-getting-started.md §1](docs/01-getting-started.md#1-rea-是什么) | `wc -l < docs/01-getting-started.md` → 758 |
 | 要把 REA 接进你的 AI agent | [docs/02-agent-integration.md §一条命令](docs/02-agent-integration.md#一条命令搞定推荐) | — |
 | 手上有个目标，不知道该用哪个命令 | [guides/by-target-type.md §速查表](guides/by-target-type.md#目标类型速查) | 11 类目标，其中 6 类零依赖 |
-| 命令报错了，或结果看不懂 | [guides/troubleshooting.md §症状](guides/troubleshooting.md#症状error-cannot-create-a-string-longer-than-0x1fffffe8-characters) | 14 种症状，709 行 |
+| 命令报错了，或结果看不懂 | [guides/troubleshooting.md §症状](guides/troubleshooting.md#症状error-cannot-create-a-string-longer-than-0x1fffffe8-characters) | 15 种症状，709 行 |
 | 想看真实产出长什么样 | [case-studies/README.md §案例一](case-studies/README.md#案例一pcl2--从-il-里读出一个启动器的完整架构) | 3 个案例，5.5 / 146 / 567 MB |
 | 想让 AI 替你做分析 | [prompts/README.md §怎么用](prompts/README.md#怎么用) | 2 个文件 / 3 份提示词 |
 | REA 覆盖不到的角度，要自己写解析 | [tools/README.md §脚本清单](tools/README.md#脚本清单) | 15 个脚本，1,311 行 |
@@ -121,7 +121,7 @@ npx -y rea-agents <命令>          # ③ 不装：每次一次性运行，机�
 ```bash
 grep -E '^\| [0-9]+ \|' guides/by-target-type.md | wc -l          # → 11 类目标
 grep -E '^\| [0-9]+ \|' guides/by-target-type.md | grep -c 零依赖  # → 其中 6 类
-wc -l < guides/troubleshooting.md                                  # → 709 行
+wc -l < guides/troubleshooting.md                                  # → 760 行
 git ls-files 'tools/*.cjs' | xargs wc -l | tail -1                  # → 1311 行 / 15 个脚本
 ```
 
@@ -168,7 +168,7 @@ code: 'ERR_STRING_TOO_LONG'
 146 MB 的 asar 产出 354 MB evidence（能读通），567 MB 的 asar 产出 570,218,269 字节——这份用 `readFileSync` 整份读入必定崩，因为它超了 V8 单个字符串的上限。同一套脚本换个目标就崩，最容易被当成偶发。
 
 ```bash
-grep -c '^## 症状' guides/troubleshooting.md    # → 14 种症状条目
+grep -c '^## 症状' guides/troubleshooting.md    # → 15 种症状条目
 ```
 
 **二、跑一次能产出多少数字** OpenCode 桌面版 146 MB 的 `app.asar`，【实测】计数（`guides/by-target-type.md` 第 107 行）：
@@ -291,7 +291,7 @@ rea-handbook/
 ├── verify-handbook.mjs              # 链接 + 合规 + 占位符 + 结构 + 行号断言 + 证据核对 + 锚点核对 + 自述统计
 ├── verify-rea-surface.mjs           # 对着已装/最新 REA 核对命令名、--provider id、Node 版本区间
 ├── docs/                            # 3 个文件：入门、agent 接入、目录页
-├── guides/                          # 3 个文件：11 类目标怎么做、14 种症状怎么救
+├── guides/                          # 3 个文件：11 类目标怎么做、15 种症状怎么救
 ├── case-studies/                    # 7 个文件：PCL2 / ChatGPT 桌面版 / OpenCode + 索引 + 证据
 │   └── evidence/                    #   ★ 一手证据：2 份追踪摘要 + 读法说明
 │                                    #     案例里的数字可以直接从这里读出来核对
@@ -309,11 +309,11 @@ git ls-files 'tools/*.cjs' | wc -l                # → 15 个脚本
 
 | 目录 | 文件数 | 行数 |
 | --- | --- | --- |
-| `docs/` | 3 | 1,095 |
-| `guides/` | 3 | 1,367 |
+| `docs/` | 3 | 1,096 |
+| `guides/` | 3 | 1,418 |
 | `case-studies/` | 5 | 4,638 |
 | `prompts/` | 3 | 669 |
-| 合计 | 14 | 7,769 |
+| 合计 | 14 | 7,821 |
 
 这 15 个脚本只 `require` Node 内置模块，仓库里没有 `package.json`，也没有 `node_modules`。克隆后直接 `node tools/asar-peek.cjs <app.asar> package.json` 就能跑：
 

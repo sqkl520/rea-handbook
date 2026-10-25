@@ -273,5 +273,5 @@ rea inspect-managed-members "<目标>" --type <可疑类型> --format json
 动手前请自行确认目标的使用条款。
 
 **卡住了去哪查**：这份模板只给流程，不列症状。遇到报错、结果看不懂、命令没输出，
-查配套手册的 `guides/troubleshooting.md`（14 种症状逐条给解法）；不知道该用哪个命令，
+查配套手册的 `guides/troubleshooting.md`（15 种症状逐条给解法）；不知道该用哪个命令，
 查 `guides/by-target-type.md`。两者都在 <https://github.com/sqkl520/rea-handbook>。

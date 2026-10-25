@@ -293,6 +293,13 @@ the feature is absent.`
 通常住在某个 `javascript-asset` 节点的
 `observations[].properties.static_analysis.electron.ipc[].channel` 里。
 
+> **什么时候会遇到**：分析正常展开时，图谱里是有真正的 `ipc-channel` 节点的，`channel` 能匹配。
+> 但在**投影失败**（`application_projection_failure`，通常是父进程结果预算耗尽）时，
+> 结构化的 `ipc-channel` 节点不会生成，通道信息只剩文件节点上那份
+> `static_analysis.electron.ipc[]`。这时 `channel` 必然搜不到，`string` 能。
+> 换句话说：**`channel` 的失效与"分析是否完整"绑定**——看到 `status: partial`
+> 就应该直接用 `string`。
+
 同一份 evidence 的对照实验（实测）：
 
 | seed | 结果 |
@@ -399,6 +406,29 @@ OUT=$(rea ... --filter-output "evidence_id"); [ "$OUT" = "{}" ] && echo "FILTER 
 
 调试期先不带 `--filter-output` 跑一次确认字段名，再优化体积。
 
+### 6.8.0 的三条新行为（与上表不同）
+
+**① 失败结果不再被 filter 吃掉。** 6.5.0/6.7.0 里，命令失败时 `--filter-output code`
+可能只剩 `"target_unavailable"`、写错字段给 `{}`——把错误信息本身滤没了。
+6.8.0 改成**忽略 filter、返回完整错误对象**。
+
+**② 不健康的 `doctor` 完全无视 `--filter-output`。** 这条最容易让人误判：
+
+```bash
+rea doctor --json --filter-output zz    # healthy:false 的机器上照样返回全量 ~13 KB
+```
+
+因为 `healthy: false` 被判为失败，走了上面的"失败不滤"分支。
+**看起来像 filter 彻底失效，其实是设计**。机器健康时 filter 正常生效。
+
+**③ 新的错误码。** 以前这些情况报 `UNKNOWN` 或静默，现在有明确代码：
+
+| 情况 | 6.8.0 |
+| --- | --- |
+| `--filter-output` 给了标志但没给值 | `MISSING_OUTPUT_VALUE` |
+| `--format bogus`、`--token-limit -3` | `INVALID_OUTPUT_VALUE` |
+| `--format jsonl` 用在非行集合结果上 | `unreadable_output` |
+
 ---
 
 ## 症状：SQLite 报 `unsupported_version`，但别的命令都好用
@@ -461,6 +491,27 @@ REA_JS="/path/to/npm-global/node_modules/rea-agents/scripts/rea.mjs"
 | `>= 26.12.1` | ✅ | ✅ | 推荐 |
 
 **一条命令避开所有坑**：直接用 **24.22.1+** 或 **26.12.1+**。
+
+---
+
+## 症状：旧版存的 evidence，新版读不了（`evidence_integrity_mismatch`）
+
+**你可能看到**：把 6.5.0 时期保存的 `evidence.json` 喂给 6.8.0 的命令，
+报 `evidence_integrity_mismatch`，说证据的 schema 与当前版本不符。
+
+**为什么**：evidence 里带 schema 标识，6.8.0 改了（新增了 `ManagedMemberRecovery`
+等结构）。**跨版本复用 evidence 不受支持**——它不像 JSON 那样向后兼容。
+
+**怎么办**：
+
+- 想复用就**用同一个版本重跑**生成 evidence。升级过的机器上，旧的 evidence 只能作参考，
+  不能当输入。
+- 长期保存证据时，把生成它的 REA 版本一起记下来（`rea --version`），
+  下次就知道要不要重跑。
+
+**能不能预防**：能——**分析产物和工具版本绑定保存**。本仓库的
+`case-studies/evidence/` 就是这么做的：摘要文件头写明了分析时的版本（6.5.0 时期），
+所以它们只用于核对历史数字，不会被当成 6.8.0 的输入。
 
 ---
 
