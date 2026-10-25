@@ -8,7 +8,7 @@
 [![Unofficial handbook](https://img.shields.io/badge/REA-Unofficial%20handbook-d73a49?style=flat-square)](NOTICE.md)
 [![Based on REA 6.5.0](https://img.shields.io/badge/based%20on-REA%206.5.0-blue?style=flat-square)](https://www.npmjs.com/package/rea-agents)
 
-**给第一次用 REA 的人：一本把坑写清楚、每个数都标了出处的第三方手册。**
+**给第一次用 REA 的人：一本把坑写清楚、仓库自身的统计都配了复算命令的第三方手册。**
 
 <sub>非官方第三方手册 · 基于 REA 6.5.0 写出 · 三平台覆盖不均（详见「这本手册会过期」）</sub>
 
@@ -145,6 +145,8 @@ grep -c "【我们的发现】" guides/by-target-type.md                   # →
 关于“【我们的发现】”这一档：初稿标了 3 条，逐条对照 REA 6.5.0 官方 docs 后**撤掉 2 条**。“512 MiB 墙”和“`capabilities` 不完整”官方都写过：前者叫 "Node's single-string limit"，后者在 `docs/cli.md` 里明确指向 server tool list。剩下的这 1 条是：官方给了 `--type` 这条出路，但没说全量失败时你拿不到类型清单，而拿不到清单就填不出 `--type`。
 
 **“复算”这个词要说清楚指的是什么**：正文里每个**结构数**（文件数、行数、标注数、症状条数）旁边都有能跑出它的命令；**实测数**（节点数、边数、字节数）来自分析当时的原始输出——其中案例三的那些，原始摘要就在仓库里（[`case-studies/evidence/`](case-studies/evidence/BASELINE.md)，4.8 KB），你可以直接读出来核对。完整图谱（354 MB）不在仓库里，想复现得拿同样的目标重跑。给不出命令的结构数我们不写；实测数一律标出它出自哪一行。
+
+**这套自证的边界在哪**：`verify-handbook.mjs` 能自动核对的，是它正则覆盖得到的那些写法。写成了别的形式（比如某种少见的命令拼接），它就不管了。所以准确的说法是「**仓库自述的结构数可复算，且主要写法有自动核对**」，不是「所有断言都可复算」。技术结论本身的来源是三个真实目标的一次性分析——那部分靠证据文件和命令，不靠检查器。
 
 ### 三条断言
 
@@ -301,9 +303,9 @@ git ls-files 'tools/*.cjs' | wc -l                # → 15 个脚本
 | --- | --- | --- |
 | `docs/` | 3 | 1,076 |
 | `guides/` | 3 | 1,314 |
-| `case-studies/` | 5 | 4,578 |
+| `case-studies/` | 5 | 4,597 |
 | `prompts/` | 3 | 669 |
-| 合计 | 14 | 7,637 |
+| 合计 | 14 | 7,656 |
 
 这 15 个脚本只 `require` Node 内置模块，仓库里没有 `package.json`，也没有 `node_modules`。克隆后直接 `node tools/asar-peek.cjs <app.asar> package.json` 就能跑：
 

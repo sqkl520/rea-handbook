@@ -34,16 +34,27 @@ rea analyze-javascript-application "<路径>/app.asar" --integrity-policy record
 | 提取的发现 | 30,648 |
 | Evidence 体积 | 354 MB |
 
+> **这条不是完整产出**：`graph.coverage.status = "partial"`。
+> semantic 层撞了 100,000 节点的默认上限后截断，父进程结果预算 2,009,183,896 字节。
+> 应用图谱层（节点/边/终端路径）是完整的，**semantic 层不是**。
+> 要完整跑需要调高 `--max-semantic-nodes` 并留足堆——但那已经超出这份案例的范围。
+
 ### IPC 架构（最有价值的部分）
 
 ```
 163 个 IPC 操作
  76 个字面量通道
- 81 个主进程 handler
- 65 个 renderer invoke ↔ 77 个 main handle
+ 81 个主进程 handler（77 handle + 4 on）
+ 65 个 renderer invoke、77 个 main handle —— 两端各自的计数，不是配对数
+ 55 组配对（REA 的 summary.ipc.paired_renderer_transmissions）
  13 个 renderer 监听
  59 个暴露的 API 成员
 ```
+
+> **65 和 77 不是配对结果**。它们是 renderer 侧和 main 侧各自的记录数；
+> 真正配上的是 **55 组**——中间差的 10 个跨进程调用没有找到对端
+> （可能走的是动态通道名，或者对端在未解析的模块里）。
+> 早先这里用「65 ↔ 77」表示，容易被读成「配上了 65 对」，已改。
 
 **跨进程链路可以精确闭环**——渲染进程侧 `invoke` 与主进程侧 `handle`
 通过通道名精确配对，且**都带源码行列号**。
@@ -96,14 +107,15 @@ rea trace-application-feature trace-input.json --format json
 ### 大文件必须先投影
 
 ```bash
-# 354 MB 的 evidence 不要直接读
-node -e "
-const ev=JSON.parse(require('fs').readFileSync('evidence.json','utf8'));
-require('fs').writeFileSync('view.json', JSON.stringify({
-  source:{kind:'inline',evidence:ev}, view:{kind:'summary'}
-}));"
+# 354 MB 的 evidence 不要用 readFileSync 整份读——这里是极限，
+# 换成本仓库案例二那份 570 MB 就必崩（ERR_STRING_TOO_LONG，Node 单字符串上限 512 MiB）。
+# 用 jq 流式投影，内存占用与文件大小无关：
+jq -c '{source:{kind:"inline",evidence:.},view:{kind:"summary"}}' evidence.json > view.json
 rea inspect-analysis-view view.json --format json
 ```
+
+> 更早的版本这里给的是 `node -e "...readFileSync..."`。那样写在 354 MB 上勉强能跑，
+> 但把「取决于目标大小」的经验当成了通用做法——同一段代码在 570 MB 上必崩。
 
 ---
 

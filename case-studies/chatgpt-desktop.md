@@ -9,6 +9,12 @@
 > 版权归 OpenAI。如果你是本报告分析对象的作者、对内容有异议，
 > 请通过 [issue](https://github.com/sqkl520/rea-handbook/issues) 联系，我们会处理。
 
+> **这个案例只完成了一部分，先说清楚**：分析到 **3,757 / 16,197** 个源文件时，
+> 父进程结果容量耗尽（`parent_result_budget_exhausted: true`），返回的是部分结果，
+> `coverage.status` 为 `partial`。所以下面的结论覆盖的是**已分析的那 23%**，
+> 不是整个应用。它证明的是"超大目标怎么降级处理"，不是"567 MB 也能全跑完"。
+> 早先这份声明只写在索引页、正文里没提，看起来像全量分析，已补。
+
 **一个修正**：我最初判断"它不是一个 Electron 应用，是 Chromium 内嵌 shell"——**这个判断是错的**。
 它在主进程 bundle 里有 134 处 `BrowserWindow`、20 处 `ipcMain`、`process.versions.electron` 分支，
 是标准的 **Electron 应用**。它看起来不像典型 Electron 的原因是：`ChatGPT.exe` 只有 4.7MB，
