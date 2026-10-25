@@ -1,7 +1,7 @@
 # PCL2 (Plain Craft Launcher 2) 逆向分析
 
 **目标**：`<PCL2 安装位置>/Plain Craft Launcher 2.1.exe`
-**真实身份**：`Plain Craft Launcher 2` 版本 **2.13.1.1**（文件名写的 2.1 是误导）
+**真实身份**：`Plain Craft Launcher 2` 版本 **2.13.1.1**（文件名只保留到 2.1，与实际版本号不一致）
 **SHA-256**：`109f1208504299a11a7aadc5ac78307467d8be1e73dd33bd00d4789afce6b1e1`
 **技术栈**：**WPF + VB.NET**（.NET Framework 4.0，IL-only，anycpu）
 **规模**：5.5 MB 单文件；**643 个类型、6,116 个方法、3,503 个字段**
@@ -18,6 +18,7 @@
 > （不加载、不执行目标程序，未绕过任何技术保护措施）。
 >
 > **报告不包含**：可用于规避授权/付费机制的操作细节、密钥或凭据、个人隐私信息。
+> 就本对象而言，也就是不涉及账号登录与捐赠回馈机制的实现细节。
 
 分析方法：REA 的 .NET 静态分析（`inspect-managed-*`）+ 自写的 PE/CLI 元数据解析器 +
 `#US` 字符串堆解析。全过程**不加载、不执行**目标程序。
@@ -40,7 +41,7 @@ PCL2 是一个**把"启动游戏"这件事做到工业化程度**的启动器：
   mscorlib, PresentationFramework, PresentationCore, System.Xaml, WindowsBase   ← WPF
   Microsoft.VisualBasic, System, System.Core, System.Drawing, System.Windows.Forms  ← VB.NET + 混用 WinForms
   Newtonsoft.Json          ← 版本 JSON 解析
-  MeloongCore, MeloongCore.Wpf   ← （非公开的）自家核心库
+  MeloongCore, MeloongCore.Wpf   ← 作者的通用 .NET 库（MeloongCore，公开仓库，Apache-2.0；PCL 仓库的 submodule）
   PCLCS                    ← 自家 C# 辅助库（VB 主工程 + C# 工具库）
   System.IO.Compression    ← zip 处理
   NAudio                   ← 音频（音乐播放/BGM）
@@ -598,7 +599,7 @@ if (t != null && t.Source.Url.Contains("bmclapi"))
 官方源没有这个限制。
 
 **这是一个"懂事"的设计**：镜像站是公益的、带宽有限的，
-PCL2 用几百万用户量去打它肯定打垮——
+PCL2 以它的用户量级并发拉取，全速会给镜像站造成明显压力——
 所以它**主动给自己限速**，而不是"能跑多快跑多快"。
 
 **这个细节值得国内工具开发者学习**：用别人的公益基础设施时，
@@ -874,10 +875,10 @@ PCL 自建服务器（`pcl2-server`）的资源 URL 以 `{CDN}` 结尾，
 由 `ModSecret.SecretCdnSign` 替换为**带签名的 CDN 地址**（具体签名算法不在此记录）。
 
 **为什么要签名**：这是 PCL 自建的"主页市场""公告"等服务的 CDN 地址，
-签名防止**第三方直接盗链**（白嫖 PCL 的 CDN 流量）。
+签名用于**限制第三方直接引用其 CDN 资源**，避免流量被外部站点消耗。
 
 **对 dsh 的启示**：如果将来 dsh 要自建服务（比如版本兼容矩阵、公告），
-"轻量签名防盗链"这个思路是够用的——不需要复杂的鉴权系统。
+"轻量签名限制引用"这个思路是够用的——不需要复杂的鉴权系统。
 
 #### 4.4.7 全局限流（呼应 §4.3.4）
 
@@ -2688,8 +2689,9 @@ PCL2 把它作为**外部 CLI 程序下载并管理**，而不是自己实现穿
 "广播联机房间端口失败"
 ```
 
-**"请让房主使用非社区版"** 这条很说明问题：PCL2 有**社区版/正式版**之分，
-联机作为"服务型功能"只在正式版提供（因为要连 PCL 自己的节点服务器）。
+**"请让房主使用非社区版"** 这条很说明问题：正式版会**拒绝 10 位的社区版邀请码**
+（源码注释里写作 `PCL CE`）。也就是说，社区版（PCL-CE，由社区独立维护的分支）
+与正式版在联机协议上不互通，而不是"正式版提供、社区版阉割"的产品线关系。
 
 ### 10.3 NAT 类型诊断（技术上最专业的部分）
 
@@ -2736,7 +2738,7 @@ enum LinkStates { Waiting, Loading, Failed, Finished }
 | **邀请码抽象** | 用户不需要理解"网络名/密码/节点"，只需要转发一串码 |
 | **检测剪贴板**（"是否使用复制的邀请码"） | 减少一次手工操作 |
 | **显示 NAT 类型 + Ping + 中继状态** | 用户可自助诊断，减少求助 |
-| **社区版不提供** | 服务型功能需要成本覆盖（呼应 §11.3 的商业模型） |
+| **社区版不提供** | 社区版（PCL-CE）是独立维护的分支，与正式版的联机协议不互通 |
 | **节点列表有 CDN 回退** | 单点故障时仍可用 |
 
 **这是"平台化"的思路**：PCL2 不只启动游戏，还提供**联机基础设施**。
@@ -3184,11 +3186,12 @@ Log("下载原版支持库文件")     ' 阅读方法字符串 = 阅读执行流
 所有方法里都带完整源码路径（`CallerFilePath` 特性留下的，用于异常堆栈定位）。
 **发布版没剥离**，直接暴露了源码目录结构。
 
-用 UTF-16LE 扫描整个 `.text` 段（554 万字节），还原出 **52 个源码路径**：
+用 UTF-16LE 扫描整个 `.text` 段（554 万字节），还原出 **52 个源码路径**
+（这些是 PCL 作者编译机上的路径，随调试信息留在发布版里，不是本手册分析者的路径）：
 
 ```
 E:\Projects\PCL\本体代码\
-├── MeloongCore\                         ← 独立共享库（OpenAI 之外的作者自建）
+├── MeloongCore\                         ← 独立共享库（作者自建，公开仓库 Apache-2.0）
 │   └── Shared\
 │       ├── Utils\  CryptographyUtils.cs, DirectoryUtils.cs, FileUtils.cs,
 │       │           PathUtils.cs, RegistryUtils.cs, TaskUtils.cs
@@ -3395,7 +3398,8 @@ PCLCS 命名空间的类型：
 
 ```vb
 ' 每个子系统独立版本号 —— ★ 这是正确做法
-Versions: ModCacheVersion, McInstanceCacheVersion, JavaConfigVersion
+Versions: LocalModCacheVersion, McInstanceCacheVersion,
+          JavaConfigVersion, McInstallManifestVersion
 
 ' 资源配置
 ResourceTypes:     Mod, ModPack, ResourcePack, Shader, DataPack, Plugin, Map,
@@ -3408,7 +3412,7 @@ Configs: JavaConfigVersion, JavaList, JavaRemovedList, JavaMigrated, JavaForced
 ```
 
 **`Versions` 这个枚举特别值得注意**——它证明 **PCL2 对每个需要迁移的子系统
-都有独立版本号**（授权/Mod 缓存/实例缓存/Java 配置）。
+都有独立版本号**（Mod 缓存/实例缓存/Java 配置/安装清单）。
 对比 PCL2 文档 §7.2（实例导出）里那条建议：**"资产的版本是需要比较、迁移、
 回滚的一等概念，不是布尔标记"**——这里就是那个原则的具体实现。
 
@@ -3479,14 +3483,14 @@ https://easytier.meloong.com/?page=1&per_page=1000     ← 联机节点列表
 字符串：`从源站获取节点列表失败，将使用 CDN 缓存`
 → **源站 + CDN 双层回退**，`{CDN}` 是运行时替换参数（增加抓取成本）。
 
-**D. 授权机制（略）**
+**D. 捐赠回馈校验（略）**
 
-> 本节原记录了对该应用离线授权机制的分析。
-> 出于对独立开发者的尊重，以及避免任何可能被用于规避付费机制的风险，
+> 本节原记录了对该应用本地捐赠回馈标识的分析。
+> 出于对独立开发者的尊重，以及避免任何可能被用于规避其运营机制的风险，
 > **该分析已移除**。
 >
-> 可以保留的结论是：该应用**存在一套离线授权机制**。
-> 具体的码结构、绑定方式与生成路径不再记录。
+> 可以保留的结论是：该应用有一套**本地校验的捐赠回馈标识**。
+> 它与付费解锁无关，也不是访问控制；具体的结构、绑定方式与生成路径不再记录。
 
 ### 12.5 一些"人味"的代码
 

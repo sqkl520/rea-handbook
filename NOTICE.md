@@ -35,7 +35,7 @@ REA 官方 `DISCLAIMER.md` 的立场适用于本手册涉及的所有操作：
 
 | 应用 | 归属 |
 | --- | --- |
-| **Plain Craft Launcher 2** | 由 PCL 项目作者（龙腾猫跃 / Meloong）开发。本报告基于合法获取的本机安装副本做静态分析。 |
+| **Plain Craft Launcher 2** | 由 PCL 项目作者（龙腾猫跃 / Meloong）开发，源码在其[公开仓库](https://github.com/Meloong-Git/PCL)，按《PCL 分发有限许可》与《PCL 存储库合理使用指南》发布（非 OSI 开源许可）。本仓库与 PCL 项目无隶属关系，也不暗示与其相关。本报告基于合法获取的本机安装副本做静态分析。 |
 | **ChatGPT 桌面版** | OpenAI 的产品。本报告仅描述其**打包形态与 UI 架构**，用于学习其工程做法。 |
 | **OpenCode 桌面版** | 开源项目（见其官方仓库）。 |
 

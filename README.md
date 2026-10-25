@@ -183,11 +183,11 @@ grep -n "27,278" guides/by-target-type.md       # → 第 107 行，整串计数
 …
 ```
 
-顺带发现一条：**#35「Fabric报错」在代码里没有生产者**。模板存在，但 `AnalyzeCrit1/2` 都不产生它。这类“文档里有、代码里没有”的坑，是读反编译源码才看得到的。
+顺带发现一条：**#35「Fabric报错」在代码里没有生产者**。模板存在，但 `AnalyzeCrit1/2/3` 都不产生它——`AppendReason` 覆盖了其余几十个枚举值，唯独跳过这一个（以 2026-10 的公开源码为准）。这类“文档里有、代码里没有”的坑，是读反编译源码才看得到的。
 
 ```bash
-wc -l < case-studies/pcl2.md                          # → 3635 行，单份主报告
-grep -n "枚举全表" case-studies/pcl2.md                 # → 第 1958 行，46 行完整枚举表
+wc -l < case-studies/pcl2.md                          # → 3639 行，单份主报告
+grep -n "枚举全表" case-studies/pcl2.md                 # → 第 1959 行，46 行完整枚举表
 ```
 
 三个案例的规模跨两个数量级：5.5 MB 的单文件 .NET 应用、146 MB 的 Electron 归档、567 MB 的巨型归档。最后一份只完成了一部分：分析到 3,757 / 16,197 个源文件时父进程结果容量耗尽，报告原样写了“部分完成 + 容量耗尽”，不假装成功。
@@ -297,9 +297,9 @@ git ls-files 'tools/*.cjs' | wc -l                # → 14 个脚本
 | --- | --- | --- |
 | `docs/` | 3 | 1,043 |
 | `guides/` | 3 | 1,303 |
-| `case-studies/` | 5 | 4,537 |
+| `case-studies/` | 5 | 4,541 |
 | `prompts/` | 3 | 635 |
-| 合计 | 14 | 7,518 |
+| 合计 | 14 | 7,522 |
 
 这 14 个脚本只 `require` Node 内置模块，仓库里没有 `package.json`，也没有 `node_modules`。克隆后直接 `node tools/asar-peek.cjs <app.asar> package.json` 就能跑：
 
