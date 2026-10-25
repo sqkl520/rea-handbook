@@ -219,7 +219,9 @@ if (surface.providers.length) {
 // ── 5. 核对 Node 版本声明 ──
 console.log('\n【3】Node 版本要求');
 const nodeClaims = [];
+const SELF_PATH = fileURLToPath(import.meta.url);
 for (const f of files) {
+  if (f === SELF_PATH) continue;   // 本脚本注释里就写着示例 engines，不能自证其罪
   const rel = relative(ROOT, f);
   readFileSync(f, 'utf8').split('\n').forEach((line, i) => {
     // 抓形如 ^22.19.0 || ^24.11.0 || >=26.0.0 的三段区间
@@ -231,11 +233,15 @@ if (surface.node) {
   let stale = 0;
   for (const c of nodeClaims) {
     if (c.text.replace(/\s+/g, '') === surface.node.replace(/\s+/g, '')) continue;
-    // 写明了基线版本的不算错（例如 "6.5.0: ^22.19.0 || ..."），
-    // 只要同一节里同时给出当前值就该放过——这一点交给作者判断，
-    // 脚本只提醒"这里还挂着旧区间"，且不把它计为失败。
-    if (/\b\d+\.\d+\.\d+:\s*$/.test(c.lineText || '') || /6\.\d+\.\d+/.test(c.lineText || '')) {
-      info(`${c.rel}:${c.line} 标了基线版本，跳过（当前 ${surface.node}）`);
+    // 判断这行的 engines 值到底属于哪个版本。
+    // 形如 `6.5.0: ^22.19...` / `**6.5.0 基线**...` / `REA 6.5.0 的 package.json`
+    // 都指明了"我写的是 X 的要求"。若 X === 正在验证的版本，但那串 engines 又对不上，
+    // 说明标注本身就错了，要报；若 X !== 当前验证版本，这是有意的历史说明，放过。
+    const m = /\b(\d+\.\d+\.\d+)\b[\s*:：]*[^\n]{0,20}(?:基线|的\s*`?package\.json`?)/.exec(c.lineText || '') ||
+              /\b(\d+\.\d+\.\d+)\s*:/.exec(c.lineText || '');
+    const namesBaseline = m && m[1] !== surface.version;
+    if (namesBaseline) {
+      info(`${c.rel}:${c.line} 写明是 ${m[1]} 的要求，跳过（正在对照 ${surface.version}）`);
       continue;
     }
     stale++;
