@@ -161,6 +161,8 @@ for (const f of files) {
   text.split('\n').forEach((line, i) => {
     for (const m of line.matchAll(COMMAND_RE)) {
       const c = m[1];
+      // 占位写法（rea <命令> / rea xxx）不是真命令
+      if (c === 'xxx' || c.startsWith('<')) continue;
       if (!seenCommands.has(c)) seenCommands.set(c, []);
       seenCommands.get(c).push(`${rel}:${i + 1}`);
     }

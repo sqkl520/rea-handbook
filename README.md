@@ -290,7 +290,7 @@ rea-handbook/
 ```
 
 ```bash
-git ls-files | wc -l                              # → 37 个入库文件
+git ls-files | wc -l                              # → 38 个入库文件
 git ls-files '*.md' | wc -l                       # → 17 篇 Markdown
 git ls-files 'tools/*.cjs' | wc -l                # → 14 个脚本
 ```
@@ -340,7 +340,7 @@ node verify-rea-surface.mjs              # 默认拉 npm 上最新版对照
 node verify-rea-surface.mjs --rea <包目录>  # 或对本地已装的版本（离线）
 ```
 
-它从包里读出命令清单、`doctor --provider` 的 id 列表、`engines.node`，再和正文里出现的每一次引用比对。下文里的 Node 版本区间、`--provider` 的名字、`rea xxx` 的命令名，都由它守。
+它从包里读出命令清单、`doctor --provider` 的 id 列表、`engines.node`，再和正文里出现的每一次引用比对。下文里的 Node 版本区间、`--provider` 的名字、`rea <命令>` 的命令名，都由它守。
 
 ## 这本手册会过期，也有些事它做不到
 
