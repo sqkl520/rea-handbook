@@ -108,7 +108,7 @@ npx -y rea-agents <命令>          # 或：不装，每次一次性运行
 | 命令报错了，或结果看不懂 | [guides/troubleshooting.md §症状](guides/troubleshooting.md#症状error-cannot-create-a-string-longer-than-0x1fffffe8-characters) | 14 种症状，680 行 |
 | 想看真实产出长什么样 | [case-studies/README.md §案例一](case-studies/README.md#案例一pcl2--从-il-里读出一个启动器的完整架构) | 3 个案例，5.5 / 146 / 567 MB |
 | 想让 AI 替你做分析 | [prompts/README.md §怎么用](prompts/README.md#怎么用) | 2 份模板 |
-| REA 覆盖不到的角度，要自己写解析 | [tools/README.md §脚本清单](tools/README.md#脚本清单) | 14 个脚本，1,146 行 |
+| REA 覆盖不到的角度，要自己写解析 | [tools/README.md §脚本清单](tools/README.md#脚本清单) | 15 个脚本，1,261 行 |
 
 一句话分工：README 只管“凭什么信”和“从哪进”，具体内容由各目录自己的 README 承担，两边不重复写。
 
@@ -118,7 +118,7 @@ npx -y rea-agents <命令>          # 或：不装，每次一次性运行
 grep -E '^\| [0-9]+ \|' guides/by-target-type.md | wc -l          # → 11 类目标
 grep -E '^\| [0-9]+ \|' guides/by-target-type.md | grep -c 零依赖  # → 其中 6 类
 wc -l < guides/troubleshooting.md                                  # → 680 行
-git ls-files 'tools/*.cjs' | xargs wc -l | tail -1                  # → 1191 行 / 14 个脚本
+git ls-files 'tools/*.cjs' | xargs wc -l | tail -1                  # → 1261 行 / 15 个脚本
 ```
 
 （`11 类`用速查表行数计）
@@ -286,13 +286,13 @@ rea-handbook/
 │   └── evidence/                    #   ★ 一手证据：2 份追踪摘要 + 读法说明
 │                                    #     案例里的数字可以直接从这里读出来核对
 ├── prompts/                         # 3 个文件：完整版与纯学习版提示词模板
-└── tools/                           # 15 个文件：14 个分析脚本 + 清单
+└── tools/                           # 16 个文件：15 个分析脚本 + 清单
 ```
 
 ```bash
-git ls-files | wc -l                              # → 38 个入库文件
+git ls-files | wc -l                              # → 39 个入库文件
 git ls-files '*.md' | wc -l                       # → 17 篇 Markdown
-git ls-files 'tools/*.cjs' | wc -l                # → 14 个脚本
+git ls-files 'tools/*.cjs' | wc -l                # → 15 个脚本
 ```
 
 四个正文目录各自的行数（`git ls-files 'docs/*.md' 'guides/*.md' 'case-studies/*.md' 'prompts/*.md' | xargs cat | wc -l`，`wc -l` 口径，不含本 README 与 `evidence/` 里的 JSON）。这些数字会随正文增删变化，上一条命令跑一次就是它们的当前值：
@@ -305,7 +305,7 @@ git ls-files 'tools/*.cjs' | wc -l                # → 14 个脚本
 | `prompts/` | 3 | 669 |
 | 合计 | 14 | 7,607 |
 
-这 14 个脚本只 `require` Node 内置模块，仓库里没有 `package.json`，也没有 `node_modules`。克隆后直接 `node tools/asar-peek.cjs <app.asar> package.json` 就能跑：
+这 15 个脚本只 `require` Node 内置模块，仓库里没有 `package.json`，也没有 `node_modules`。克隆后直接 `node tools/asar-peek.cjs <app.asar> package.json` 就能跑：
 
 ```bash
 grep -rhoE "require\(['\"][^'\"]+['\"]\)" tools/*.cjs \
