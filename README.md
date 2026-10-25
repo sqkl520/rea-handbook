@@ -172,7 +172,7 @@ IPC：163 个操作 / 76 个字面量通道 / 81 个主进程 handler / 55 组�
 ```
 
 ```bash
-grep -n "27,278" guides/by-target-type.md       # → 第 107 行，整串计数都在这一行
+grep -n "27,278" guides/by-target-type.md       # → 第 112 行，整串计数都在这一行
 ```
 
 **三、分析出来的不是“概要”，是能直接用的结构** PCL2 的崩溃诊断子系统，反编译出 46 个崩溃原因枚举——逐个从 `CrashReason` 常量读出来，不是猜的：
@@ -211,12 +211,12 @@ grep -n "枚举全表" case-studies/pcl2.md                 # → 第 1972 行�
 
 64 MiB 那条值得单说：文件只有 5.5 MB，全量成员提取照样失败。`coverage.state = "unavailable"`，`detail` 里写着超出 `67108864` 字节。这 64 MiB 不是文件大小上限，是一条独立的表示预算。反向反例也测过：3.4 MB 的 `System.dll`（`Microsoft.NET/Framework64/v4.0.30319`，sha256 `4ad37405…`）同样撑爆它。
 
-复算：`grep -n "67108864" guides/by-target-type.md` → 第 146 行；`grep -n "67108864" guides/troubleshooting.md` → 112 与 120 行。
+复算：`grep -n "67108864" guides/by-target-type.md` → 第 151 行；`grep -n "67108864" guides/troubleshooting.md` → 112 与 120 行。
 
 表里剩下三个数同样在仓库内可点：
 
 ```bash
-grep -n "100,000 节点" case-studies/README.md        # → 33 与 212 行（semantic 上限）
+grep -n "100,000 节点" case-studies/README.md        # → 42 与 221 行（semantic 上限）
 grep -n "3,757" case-studies/README.md                # → 139 行（567 MB 停在哪）
 grep -n "570,218,269" guides/troubleshooting.md       # → 46 行（整份读入必崩的那个体量）
 ```
@@ -301,11 +301,11 @@ git ls-files 'tools/*.cjs' | wc -l                # → 15 个脚本
 
 | 目录 | 文件数 | 行数 |
 | --- | --- | --- |
-| `docs/` | 3 | 1,076 |
-| `guides/` | 3 | 1,314 |
-| `case-studies/` | 5 | 4,597 |
+| `docs/` | 3 | 1,079 |
+| `guides/` | 3 | 1,319 |
+| `case-studies/` | 5 | 4,638 |
 | `prompts/` | 3 | 669 |
-| 合计 | 14 | 7,656 |
+| 合计 | 14 | 7,705 |
 
 这 15 个脚本只 `require` Node 内置模块，仓库里没有 `package.json`，也没有 `node_modules`。克隆后直接 `node tools/asar-peek.cjs <app.asar> package.json` 就能跑：
 

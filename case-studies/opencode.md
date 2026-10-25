@@ -5,6 +5,16 @@
 **分析日期**：2026-10-15
 **方法**：REA 静态应用重建 + 自写 ASAR/证据分析脚本（**未执行目标程序、未绕过任何技术保护措施**）
 
+> **分析声明**：本分析基于**公开获取的软件发行包**（用户本机已安装副本），
+> 使用**静态分析方法**，目的是学习其工程做法。报告中的代码片段为分析中**整理/重写的示意**，
+> 不是原始代码副本；OpenCode 为开源项目，版权归其贡献者。
+> 如果你是本报告分析对象的作者、对内容有异议，
+> 请通过 [issue](https://github.com/sqkl520/rea-handbook/issues) 联系，我们会处理。
+
+> **数字的来源**：下面所有图谱/IPC 计数都来自 REA 的 evidence 输出（`summary` 与
+> `static_analysis.electron.ipc`），不是估算。已发布到仓库的只有追踪摘要
+> （[`evidence/`](evidence/BASELINE.md)），完整 evidence 354 MB 没有入库。
+
 ---
 
 ## 这是什么
@@ -25,14 +35,19 @@ rea analyze-javascript-application "<路径>/app.asar" --integrity-policy record
 
 ### 规模
 
-| 指标 | 数值 |
-| --- | --- |
-| 应用图谱节点 | **27,278** |
-| 图谱边 | **32,977** |
-| 解析的 JS 文件 | 4,489 |
-| AST 节点 | 4,751,494 |
-| 提取的发现 | 30,648 |
-| Evidence 体积 | 354 MB |
+| 指标 | 数值 | 口径 |
+| --- | --- | --- |
+| 归档本身 | 146 MB | `app.asar` 本体 146,869,901 字节（140.1 MiB） |
+| 归档内相关文件 | **6,702** | `relevant_files`——这 146 MB 里实际被纳入分析的文件数 |
+| 解析的 JS 文件 | 4,489 | `parsed_javascript_files` |
+| 应用图谱节点 | **27,278** | `traced_nodes` |
+| 图谱边 | **32,977** | `traced_edges` |
+| AST 节点 | 4,751,494 | `visited_ast_nodes` |
+| 提取的发现 | 30,648 | `findings` |
+| Evidence 体积 | 354 MB | **输出**体积，不是归档解压后的量 |
+
+> **注意两个体积不是一回事**：146 MB 是输入（归档），354 MB 是输出（evidence JSON）。
+> 后者比前者大是因为图谱把结构展开了，不是"解压后 354 MB"。
 
 > **这条不是完整产出**：`graph.coverage.status = "partial"`。
 > semantic 层撞了 100,000 节点的默认上限后截断，父进程结果预算 2,009,183,896 字节。
@@ -74,10 +89,18 @@ rea analyze-javascript-application "<路径>/app.asar" --integrity-policy record
 
 ```
 14 个通道、41 条 IPC 记录
-渲染侧全是 invoke、主侧全是 handle
+渲染侧：13 条 invoke + 2 条 on（`wsl-servers-event` 事件流）
+主侧：26 条 handle（26/26，全部是 handle）
 配一对 subscribe / unsubscribe 事件流
 → 一套设计规范的完整 API
 ```
+
+> **值得往下推的一点**：26 条 main handler 只对应 14 个通道——每个通道在
+> `out/main/index.js` 里注册了**两次**（一次 inline-function、一次 identifier 引用），
+> 例如 `wsl-servers-get-state` 同时出现在第 3772 行和第 3827 行。
+> 这说明主进程对业务 handler 有一层包装（先包一遍再注册），
+> 而不是直接 `ipcMain.handle`。这一层包装是三份案例里最典型的"架构结论来自计数之外"的例子——
+> 但本报告停在计数上，没有继续追。
 
 ### 打包配置画像（Electron fuses）
 

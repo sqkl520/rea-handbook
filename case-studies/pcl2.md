@@ -400,7 +400,7 @@ Mod 列表监视:   LoaderFolderRun(LocalResourceLoader, PathIndie + "mods\")
 - 用户手动搬能看见到底发生了什么
 - 隔离变更不频繁，手动成本可接受
 
-**"诚实告知代价"** 的一贯做法（呼应 §3.2 末尾和 §13.4）。
+**"诚实告知代价"** 的一贯做法（呼应 §3.2 末尾和 §13.2 第 9 条）。
 
 #### 目录布局（完整）
 
@@ -2618,7 +2618,7 @@ PageSpeedLeft.WatcherInterval     = 300     // 网速轮询间隔 ms
 // 性能探测
 PageLinkMain.INVITE_CODE_VERSION = 2        // 联机邀请码协议版本
 
-// 拖放（见 §9 UI 工程 — DragHelper）
+// 拖放（DragHelper 的 Win32 消息常量；本报告未展开其实现）
 DragHelper.WM_COPYGLOBALDATA = 73
 DragHelper.WM_COPYDATA       = 74
 DragHelper.WM_DROPFILES      = 563          // ★ UAC 提权后恢复拖放的关键

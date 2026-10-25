@@ -47,7 +47,7 @@
 **一句话**：不运行目标，把 ASAR 或解压目录重建为一张带证据的"应用图谱"——模块、import/require 关系、路由与端点候选、preload/contextBridge 暴露面，以及 **renderer invoke ↔ main handle 按通道名精确配对**的 IPC 链路（两端都带源码行列号），外加 `.node` 原生插件的交接点。
 
 **前置**：**零依赖**（只要 Node.js + npm）。Windows / macOS / Linux 均可用；Linux 上 REA 的进程监督需要 PATH 上有 procps 兼容的 `ps`。它不是 native 引擎，不需要 Hopper/Ghidra/IDA。
-**在 Bun 上运行时**（仅 Windows），analyzer 的 Job Object 把提交内存限制为 `max_heap_mb` + 512 MiB（默认 1536 MiB）；**Node 下无此进程级限制**，`--max-heap-mb` 的 V8 old-space 预算才是边界。
+**在 Bun 上运行时**（仅 Windows），analyzer 的 Job Object 把提交内存限制为 `max_heap_mb` + 512 MiB（`--max-heap-mb` 默认 1024 MiB，所以这里是 **1536 MiB**）；**Node 下无此进程级限制**，`--max-heap-mb` 的 V8 old-space 预算才是边界。
 
 **命令**：
 
@@ -85,6 +85,11 @@ rea analyze-javascript-application "<asar>" \
 # 1) 投影成 summary view（几百 MB 的 evidence 先别直接读）
 jq -c '{source: {kind: "inline", evidence: .}, view: {kind: "summary"}}' evidence.json > view.json
 rea inspect-analysis-view view.json --format json
+
+# ⚠️ view.json 本身也可能是几百 MB（summary 里仍含完整 inline evidence）。
+#    默认堆下会报 resource_constraint: Insufficient heap headroom。
+#    两个解法：给 Node 加 --max-heap-old-space-size，或者投影时只保留需要的字段：
+#    jq -c '{source:{kind:"inline",evidence:{normalized_result:{summary:.normalized_result.summary}}},view:{kind:"summary"}}' evidence.json > view.json
 
 # 视图也可以是模块分页：{"kind":"page","collection":"modules","offset":0,"limit":32}
 

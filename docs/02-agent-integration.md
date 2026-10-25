@@ -185,12 +185,15 @@ CLAUDE_CONFIG_DIR=~/.claude-rea claude
 PowerShell：
 
 ```powershell
+# 先存旧值：如果原本就设了 CLAUDE_CONFIG_DIR，直接 Remove-Item 会把它删掉
+$prev = $env:CLAUDE_CONFIG_DIR
 $env:CLAUDE_CONFIG_DIR = Join-Path $HOME ".claude-rea"
 try {
   npx rea-agents setup --client claude_code
   claude
 } finally {
-  Remove-Item Env:\CLAUDE_CONFIG_DIR
+  if ($null -eq $prev) { Remove-Item Env:\CLAUDE_CONFIG_DIR -ErrorAction SilentlyContinue }
+  else { $env:CLAUDE_CONFIG_DIR = $prev }
 }
 ```
 
