@@ -109,7 +109,7 @@ rea trace-application-feature trace-input.json --format json
 **注意事项**：
 
 - **`--integrity-policy` 的坑是常态，不是异常**。遇到 `artifact_integrity_mismatch` 先看错误指认的路径；打包器二次签名/剥离原生二进制是常见原因，加 `record-and-continue` 重跑即可。矛盾会保留在结果里，不要当它不存在。
-- **大目标先投影再读**。几万节点 + 几百 MB evidence 直接进上下文不现实：`--filter-output`（跑的时候缩）→ jq summary view（存下来后缩）→ module page（按需翻）。官方数据：334 MB Obsidian evidence 的 summary view 约 10 KB。
+- **大目标先投影再读**。几万节点 + 几百 MB evidence 直接进上下文不现实：`--filter-output`（跑的时候缩）→ jq summary view（存下来后缩）→ module page（按需翻）。官方数据（【官方】）：334 MB Obsidian evidence 的 summary view 约 10 KB。
 - **Node 有 512 MiB 字符串硬墙**（【官方】提到了这个限制，但没给数值）。官方三篇 docs 都称它为 `Node's single-string limit`（`javascript-artifact-reconstruction.md`、`mcp-contracts.md`、`testing.md`），但没有给出 `0x1fffffe8` / 536,870,888 这个数，也没有指出它自己的追溯示例（用 `readFileSync` 读整份 evidence）在几百 MB 上会撞上。**这是本手册补的部分：数值 + 会崩的写法。**`ERR_STRING_TOO_LONG`（`0x1fffffe8` 字节）发生在 `readFileSync(evidence.json, 'utf8')`；570 MB 的 evidence 用 node 读必崩，用 `jq -c` 流式投影可行（视磁盘与目标大小可能到分钟级；且输出 `view.json` 与 evidence 同等大小，先留好空间）。**投影用 jq，不要用 node -e**。
 - **功能追踪的 seed kind 用 `string`**（【实测】+ 源码核实）。官方文档把 "IPC channel" 列为合法 seed kind。**`channel` 不是不能用，它的搜索面比 `string` 窄**：源码里 `channel` 只在本节点 `kind === "ipc-channel"` 时参与匹配，匹配字段是 `.label` / `.channel` / `.key`；而实际图谱里通道名往往住在 `javascript-asset` 节点的 `properties.static_analysis.electron.ipc[].channel` 下——那不是我这边 `ipc-channel` 节点，所以搜不到。`string` 是全局包含匹配，能跨节点类型命中。实测 `channel` 对 `kill-sidecar` 返回 no-match，`string` 命中 2 个种子。**结论：拿不准就用 `string`；确定图谱里有 `ipc-channel` 节点时才用 `channel`。**
 - **父进程结果容量**：大目标可能中途停止并返回 partial。官方推荐的调节是 `--max-heap-mb` / `--analysis-timeout-ms`（官方正路，我们当时未验证；我们只试过 `NODE_OPTIONS`，无效——worker 环境里 `NODE_OPTIONS` 被 `delete`）。更稳的办法是 `--source-path` 分层喂子集。
@@ -177,7 +177,7 @@ ilspycmd -p -o "<输出目录>" "<你的程序>.exe"
 
 **注意事项**：
 
-- **类型名会骗人**（【实测】，最有教育价值的一条）：`PageLinkMain` 看着像主页，实际是联机页（字段 `NATType` / `InviteCode`）；`MySkin` 看着像主题引擎，实际是 Minecraft 皮肤预览控件。**交叉验证字段名、方法名、CIL 字符串，别按名字猜**。
+- **类型名会骗人**（【实测】，最有教育价值的一条）：`PageLinkMain` 看着像主页，实际是联机页（私有字段 `NATType` / `NetworkSecret`，邀请码由 `GetInviteCode()` 现拼，不存储）；`MySkin` 看着像主题引擎，实际是 Minecraft 皮肤预览控件。**交叉验证字段名、方法名、CIL 字符串，别按名字猜**。
 - `--type` 要匹配报告的 `full_name`（顶层类型带命名空间）；**嵌套类型目前报告裸名**，同名嵌套类型会被一次选中多个。选中后 `member_refs` / `exported_types` 仍是全程序集清单，输出不保证小。
 - token 是 **build-local** 的：`0x06001234` 换个 MVID 就不是同一个方法。跨构建比较用 `compare-managed-members`，它按 CIL/签名/结构重新匹配。
 - `user_strings` 只覆盖被检查方法加载的字面量；`state` 可能为 partial（某方法的 CIL 未完整解码时）。字符串堆的编码注意：解析 `#US` token 时 offset 要 -1（我们自写脚本的经验）。
@@ -470,7 +470,7 @@ rea providers --format json
 - **首次查询慢**：Ghidra 的导入 + 自动分析是懒启动的，冷导入可能超过客户端默认超时（真实验证车道给 330 秒 provider 启动期限）。之后的查询才快。
 - **provider 绑定是粘性的**：一次会话绑定一个引擎；运行时失败**不会**自动换引擎（也从不自动回退到 Hopper）。多引擎可用时显式 `--provider` 选择。
 - **Ghidra 的字符串搜索只覆盖它定义成 string 的 Data**：打包/未定义的字面量（包括 Rust 字符串）可能不在结果里——空结果 ≠ 文本不存在。
-- **ELF 虚拟地址 ≠ 文件偏移**：Ghidra 可能对 PIE ELF 重定基（实测 fixture：ELF 入口 `0x1013` 变成 Ghidra 过程 `0x101013`，镜像基址 `0x100000`），这不是通用换算规则。需要时用 `address-to-file-offset` 或 `--file-offset`（仅限 `decompile`）。
+- **ELF 虚拟地址 ≠ 文件偏移**：Ghidra 可能对 PIE ELF 重定基（官方文档的验证样例：ELF 入口 `0x1013` 变成 Ghidra 过程 `0x101013`，镜像基址 `0x100000`），这不是通用换算规则。需要时用 `address-to-file-offset` 或 `--file-offset`（仅限 `decompile`）。
 - 取消活动请求会终止临时数据库并丢弃注释；有 metadata 编辑的会话不能保存快照（用 `evidence-export` 保留成果）。
 - 同一目标的 PDB 不会被采纳（REA 导入私有副本，不搜索符号服务器）。
 - macOS 上可直接把 `.app` 包传给 `analyze`。Hopper 的掩码字节搜索尚未验证（`capabilities` 明确报 unavailable）。

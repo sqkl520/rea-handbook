@@ -442,6 +442,38 @@ console.log('\n【9】README 自述统计');
     }
   }
 
+  // ── 标签计数 ──
+  // README 的「凭什么信」节有一张三档标签表，写着 by-target-type.md 里各有多少处，
+  // 配了复算命令。这些数同样会随正文增删漂移（往 guides 里标一个【官方】就变），
+  // 而前面那些表格行的正则抓不到它们——之前往 by-target-type.md 加了一个标签，
+  // 8 变成 9，verify 依然全绿。
+  const bt = join(ROOT, 'guides/by-target-type.md');
+  if (existsSync(bt)) {
+    const btText = readFileSync(bt, 'utf8');
+    const lines = btText.split('\n');
+    // 图例行里同时定义了多种标签，不能算作"使用"
+    const countTag = (tag) => lines.filter((l) => l.includes(tag) && !l.includes('标注约定')).length;
+    const tagTable = [
+      ['【官方】', countTag('【官方】')],
+      ['【实测】', countTag('【实测】')],
+      ['【我们的发现】', countTag('【我们的发现】')],
+    ];
+    for (const [tag, actual] of tagTable) {
+      // 表格行形如 `| 【官方】 | 官方文档与契约写明的 | 8 处 |`
+      const re = new RegExp(`\\|\\s*${tag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\|[^|]*\\|\\s*([\\d,]+)\\s*处\\s*\\|`);
+      const m = readme.match(re);
+      if (!m) continue;
+      const declared = num(m[1]);
+      claims.push([`${tag} 标签数`, declared, actual]);
+    }
+    // 复算命令里的 → N 也要对得上
+    const cmdRe = /grep\s+'?(【[^】]+】)'?\s+guides\/by-target-type\.md\s*\|\s*grep\s+-vc\s+'标注约定'\s*#\s*→\s*([\d,]+)/g;
+    for (const m of readme.matchAll(cmdRe)) {
+      const actual = countTag(m[1]);
+      claims.push([`${m[1]} 复算命令`, num(m[2]), actual]);
+    }
+  }
+
   let bad = 0;
   for (const [name, declared, actual] of claims) {
     if (declared !== actual) {

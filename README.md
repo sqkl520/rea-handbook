@@ -128,13 +128,13 @@ git ls-files 'tools/*.cjs' | xargs wc -l | tail -1                  # → 1146 �
 
 | 标签 | 含义 | `guides/by-target-type.md` 里的数量 |
 | --- | --- | --- |
-| 【官方】 | 官方文档与契约写明的 | 8 处 |
+| 【官方】 | 官方文档与契约写明的 | 9 处 |
 | 【实测】 | 我们在真实目标上跑出来的 | 21 处 |
 | 【我们的发现】 | 官方未展开、或表述分散在各篇的 | 1 处 |
 
 ```bash
 # 排除文件头的图例行（第 7 行同时定义了【实测】和【官方】），只数正文里的实例
-grep '【官方】' guides/by-target-type.md | grep -vc '标注约定'      # → 8
+grep '【官方】' guides/by-target-type.md | grep -vc '标注约定'      # → 9
 grep '【实测】' guides/by-target-type.md | grep -vc '标注约定'      # → 21
 grep -c "【我们的发现】" guides/by-target-type.md                   # → 1
 ```
@@ -298,10 +298,10 @@ git ls-files 'tools/*.cjs' | wc -l                # → 14 个脚本
 | 目录 | 文件数 | 行数 |
 | --- | --- | --- |
 | `docs/` | 3 | 1,043 |
-| `guides/` | 3 | 1,303 |
+| `guides/` | 3 | 1,312 |
 | `case-studies/` | 5 | 4,570 |
 | `prompts/` | 3 | 635 |
-| 合计 | 14 | 7,551 |
+| 合计 | 14 | 7,560 |
 
 这 14 个脚本只 `require` Node 内置模块，仓库里没有 `package.json`，也没有 `node_modules`。克隆后直接 `node tools/asar-peek.cjs <app.asar> package.json` 就能跑：
 

@@ -54,7 +54,7 @@ code: 'ERR_STRING_TOO_LONG'
 **怎么办**：
 
 ```bash
-# ① 首选：jq 流式投影（实测 570 MB 约 70 秒）
+# ① 首选：jq 流式投影（570 MB 实测 30–100 秒，取决于机器和投影复杂度）
 jq -c '{source:{kind:"inline",evidence:.},view:{kind:"summary"}}' \
   app-evidence.json > app-view.json
 rea inspect-analysis-view app-view.json --format json
@@ -118,7 +118,8 @@ rea inspect-sqlite-database db.sqlite --table ItemTable --row-limit 15 --format 
 
 REA 对 .NET 元数据 / CIL 解码 / 投影有**独立的 64 MiB 表示预算**
 （`67108864` 字节），是刻意的资源策略，不是 PE 格式限制。实测：3.4 MB 的
-`System.dll` 就会撑爆——643 个类型全量展开远超 64 MiB。
+`System.dll` 就会撑爆——它有 **2,365 个 TypeDef、18,170 个方法**，
+全量展开远超 64 MiB（对照：PCL2 那种 643 个类型的小程序集反而更接近边界）。
 
 **[官方已说明]** 官方 `docs/managed-code-analysis.md` 写了这个预算与解法
 （select known declaring types）。**但有一层官方没说**：官方示例直接写
@@ -408,7 +409,9 @@ Node 24.11 ~ 24.14  →  满足整体 ✅  不满足 SQLite ❌
 最容易归因错误的组合（本手册实测环境 Node 24.14.0 正好在此区间）。
 
 **[官方已说明]** 官方 `docs/sqlite-databases.md` 写了门槛；
-**[手册补充]** 但 README 顶部整体要求段落没提示这个例外。
+**[手册补充]** 但官方的 Node 版本文档只写了 `^22.19 || ^24.11 || >=26`，
+这个 SQLite 例外只出现在能力表的末尾一行（`README.md` 的 "SQLite databases" 行），
+很容易漏读。
 
 **怎么办**：
 
@@ -533,13 +536,14 @@ head -20 app-main-*.js           # stub 通常只有几行 require/export
 
 | 名字看起来像 | 实际是什么 |
 | --- | --- |
-| `PageLinkMain`——"主页" | **联机页**：字段是 `NATType` / `NetworkSecret` / `InviteCode` |
+| `PageLinkMain`——"主页" | **联机页**：私有字段 `NATType` / `NetworkSecret`，邀请码由 `GetInviteCode()` 现拼 |
 | `MySkin`——"皮肤/主题引擎" | **Minecraft 皮肤预览控件**（`_ImgBack`/`_ImgFore`，40 个方法） |
 
 真正的主页是 `PageLaunchRight`；主题机制藏在别处（是算法而不是一个叫 Skin 的类）。
 
-**[手册补充]** REA 有相关严谨性设计（`authority` 区分 observed 与
-static-relationship-inference、显式统计 `unknown_facts`），但**没有任何机制
+**[官方已说明]** REA 有相关严谨性设计（`authority` 区分 observed 与
+static-relationship-inference、显式统计 `unknown_facts`，见 `docs/javascript-application-graph.md`）；
+**[手册补充]** 但**没有任何机制
 能防止人类或 AI"看着类型名猜功能"**。
 
 **怎么办**：交叉验证，不看名字看证据——拿 `inspect-managed-members` 的
