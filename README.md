@@ -70,7 +70,7 @@ npx rea-agents setup                                     # 跑通手册里的命
 
 读手册的路先列在这，装 REA 的三种方式在后面。
 
-**读手册**（三选一）
+**读手册**（三种方式，没有优劣）
 
 | 方式 | 做法 | 需要什么 |
 | --- | --- | --- |
@@ -78,13 +78,17 @@ npx rea-agents setup                                     # 跑通手册里的命
 | 直接看 | 在 GitHub 上翻 `docs/` `guides/` `case-studies/` | 只要浏览器 |
 | 只用脚本 | `node tools/asar-peek.cjs <app.asar> package.json` | Node.js，无安装步骤 |
 
-**跑手册里的命令**（三选一）
+**跑手册里的命令**（三选一，按推荐顺序）
 
 ```bash
-npx rea-agents setup              # 交互式：把 REA 注册到你的 AI agent（Claude Code / Codex / Cursor 等）
-npm install --global rea-agents   # 或：只装命令行，得到 rea 命令
-npx -y rea-agents <命令>          # 或：不装，每次一次性运行
+npx rea-agents setup              # ① 推荐：交互式，把 REA 注册进你的 AI agent（Claude Code / Codex / Cursor 等）
+npm install --global rea-agents   # ② 只要命令行：得到 rea 命令，之后再按需跑一次 rea setup
+npx -y rea-agents <命令>          # ③ 不装：每次一次性运行，机器上不留东西
 ```
+
+**第一次来选 ①**。只有明确不想让 AI agent 介入、或机器上不允许持久安装时，才选 ② 或 ③。
+选 ① 的理由：手册里的命令大多是给 agent 用的（见下方「然后在 agent 里直接说话」），
+而 `setup` 会顺带装好配套的 skill——这层配置手写容易出错，各客户端格式并不通用。
 
 装完先跑 `rea doctor`，确认本机哪些能力可用。`healthy: false` 很常见——原因和怎么判断见下文「手册里几个最有价值的发现」末尾那段「顺带一条最容易误判的」。`node verify-handbook.mjs` 是另一回事——它查的是这份手册本身有没有坏，不是查你的安装。
 
@@ -102,7 +106,7 @@ npx -y rea-agents <命令>          # 或：不装，每次一次性运行
 
 | 你的处境 | 翻哪一篇 | 可复算的规模 |
 | --- | --- | --- |
-| 第一次装，不知道先跑哪条命令 | [docs/01-getting-started.md §1](docs/01-getting-started.md#1-rea-是什么) | `wc -l < docs/01-getting-started.md` → 741 |
+| 第一次装，不知道先跑哪条命令 | [docs/01-getting-started.md §1](docs/01-getting-started.md#1-rea-是什么) | `wc -l < docs/01-getting-started.md` → 748 |
 | 要把 REA 接进你的 AI agent | [docs/02-agent-integration.md §一条命令](docs/02-agent-integration.md#一条命令搞定推荐) | — |
 | 手上有个目标，不知道该用哪个命令 | [guides/by-target-type.md §速查表](guides/by-target-type.md#目标类型速查) | 11 类目标，其中 6 类零依赖 |
 | 命令报错了，或结果看不懂 | [guides/troubleshooting.md §症状](guides/troubleshooting.md#症状error-cannot-create-a-string-longer-than-0x1fffffe8-characters) | 14 种症状，681 行 |
@@ -301,11 +305,11 @@ git ls-files 'tools/*.cjs' | wc -l                # → 15 个脚本
 
 | 目录 | 文件数 | 行数 |
 | --- | --- | --- |
-| `docs/` | 3 | 1,079 |
+| `docs/` | 3 | 1,086 |
 | `guides/` | 3 | 1,319 |
 | `case-studies/` | 5 | 4,638 |
 | `prompts/` | 3 | 669 |
-| 合计 | 14 | 7,705 |
+| 合计 | 14 | 7,712 |
 
 这 15 个脚本只 `require` Node 内置模块，仓库里没有 `package.json`，也没有 `node_modules`。克隆后直接 `node tools/asar-peek.cjs <app.asar> package.json` 就能跑：
 
