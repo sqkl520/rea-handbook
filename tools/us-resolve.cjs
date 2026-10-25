@@ -12,6 +12,12 @@ if (!fs.existsSync(file)) { console.error('file not found: ' + file); process.ex
 const buf = fs.readFileSync(file);
 
 const peOff = buf.readUInt32LE(0x3c);
+// PE 签名校验。缺了它，把非 PE 文件（asar、文本、随机字节）传进来会拿着
+// 垃圾偏移一路 readUInt32LE，最终抛 ERR_OUT_OF_RANGE 这种看不懂的错。
+if (buf.length < 0x40 || peOff + 4 > buf.length || buf.toString('latin1', peOff, peOff + 4) !== 'PE\0\0') {
+  console.error('not a PE file: ' + file);
+  process.exit(2);
+}
 const coff = peOff + 4;
 const optSize = buf.readUInt16LE(coff + 16);
 const opt = coff + 20;
@@ -34,7 +40,15 @@ const rvaToOff = (rva) => {
 };
 const clrDir = opt + (isPE32Plus ? 112 : 96) + 14 * 8;
 const clrOff = rvaToOff(buf.readUInt32LE(clrDir));
+if (clrOff === null) {
+  console.error('not a .NET assembly (no CLI header): ' + file);
+  process.exit(2);
+}
 const metaOff = rvaToOff(buf.readUInt32LE(clrOff + 8));
+if (metaOff === null) {
+  console.error('corrupt .NET metadata root: ' + file);
+  process.exit(2);
+}
 
 const verLen = buf.readUInt32LE(metaOff + 12);
 let p = metaOff + 16 + ((verLen + 3) & ~3);

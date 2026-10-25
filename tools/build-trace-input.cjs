@@ -2,12 +2,19 @@
 const fs = require('fs');
 
 const [, , evidencePath, outPath, seedKind, seedValue] = process.argv;
-if (!evidencePath) {
+if (!evidencePath || !outPath || !seedKind || !seedValue) {
   console.error('usage: node build-trace-input.cjs <evidence.json> <out.json> <seedKind> <seedValue>');
+  console.error('  seedKind 常见取值：string / channel / route（见 tools/README.md）');
   process.exit(2);
 }
 if (!fs.existsSync(evidencePath)) { console.error('file not found: ' + evidencePath); process.exit(2); }
-const application = JSON.parse(fs.readFileSync(evidencePath, 'utf8'));
+let application;
+try {
+  application = JSON.parse(fs.readFileSync(evidencePath, 'utf8'));
+} catch (e) {
+  console.error('not valid JSON: ' + evidencePath + ' (' + e.message.split('\n')[0] + ')');
+  process.exit(2);
+}
 fs.writeFileSync(outPath, JSON.stringify({
   application,
   seed: { kind: seedKind, value: seedValue },

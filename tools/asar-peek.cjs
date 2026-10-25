@@ -1,7 +1,13 @@
 // Parse an ASAR archive header without extracting; print top-level layout and package.json.
 const fs = require('fs');
 
-const path = process.argv[2];
+const argv = process.argv.slice(2);
+// --layout 是旗标，不是位置参数。原先写死 argv[4]，导致
+// `asar-peek app.asar --layout` 把 --layout 当成"要读的归档内文件"，静默无输出。
+const wantLayout = argv.includes("--layout");
+const positional = argv.filter((a) => !a.startsWith("--"));
+const path = positional[0];
+const target = positional[1];
 if (!path) {
   console.error('usage: node asar-peek.cjs <app.asar> [file-in-archive] [--layout]');
   process.exit(2);
@@ -25,7 +31,8 @@ if (headRead < 16 || head.readUInt32LE(0) !== 4) {
   process.exit(2);
 }
 const jsonLen = head.readUInt32LE(12);
-if (jsonLen <= 0 || jsonLen > fileSize || 16 + jsonLen > fileSize) {
+const MAX_HEADER = 64 * 1024 * 1024;   // 真实 asar 头部 < 3 MB；防伪造巨型长度
+if (jsonLen <= 0 || jsonLen > MAX_HEADER || 16 + jsonLen > fileSize) {
   console.error(`not an asar archive (header length ${jsonLen} is out of range for a ${fileSize}-byte file): ` + path);
   fs.closeSync(fd);
   process.exit(2);
@@ -63,7 +70,7 @@ function readFile(node, offset, parts = []) {
 }
 
 const pkg = readFile(header, 0);
-if (pkg && process.argv[3]) {
+if (pkg && target) {
   const parsed = JSON.parse(pkg);
   console.log('===', process.argv[3], '===');
   console.log(JSON.stringify({
@@ -75,7 +82,7 @@ if (pkg && process.argv[3]) {
 }
 
 // top-level layout summary
-if (process.argv[4] === '--layout') {
+if (wantLayout) {
   const rows = [];
   function walk(node, prefix, depth) {
     if (depth > 2) return;

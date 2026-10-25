@@ -28,7 +28,10 @@ function readAsarHeader(path) {
       throw e;
     }
     const jsonLen = head.readUInt32LE(12);
-    if (jsonLen <= 0 || 16 + jsonLen > fileSize) {
+    // 上限不能只靠 fileSize：一个 1.5 GB 的文件配一个 1.5 GB 的假 jsonLen 仍会通过，
+    // 然后 Buffer.alloc 把进程吃到 OOM。真实 asar 头部通常 < 3 MB，给 64 MiB 足够宽松。
+    const MAX_HEADER = 67108864;
+    if (jsonLen <= 0 || jsonLen > MAX_HEADER || 16 + jsonLen > fileSize) {
       const e = new Error(
         `not an asar archive (header length ${jsonLen} out of range for a ${fileSize}-byte file): ` + path
       );

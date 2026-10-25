@@ -93,7 +93,7 @@ node asar-get.cjs "<app.asar>" --dir:webview/apps
 
 | 事项 | 说明 |
 | --- | --- |
-| **路径分隔符** | 脚本接受 `/` 和 `\` 两种写法（Node 在 Windows 上都能处理） |
+| **路径分隔符** | **主机路径**（`<app.asar>` 这些）`/` 和 `\` 都行，交给 OS 处理。**归档内路径**（第二个参数起）只接受 `/`——只有 `asar-get.cjs` 做了 `\` → `/` 归一化，`asar-peek.cjs` / `css-deep.cjs` 直接按 `/` 拼串比较，写成 `dist\index.css` 会静默“没找到”（退出码仍是 0） |
 | **Git Bash 参数转换** | MSYS 会把 `/webview/apps` 改写成 `D:/Git/webview/apps`。`asar-get.cjs` 会自动还原这种改写；其他脚本对 `/` 开头的归档内路径建议加 `MSYS_NO_PATHCONV=1`（但它同时会阻止 `/c/...` 这类主机路径转换，此时主机路径请写成 `C:/...`）。**macOS / Linux 无此类转换问题**，直接运行即可 |
 | **文件大小** | 有四个脚本会把整个 JSON 一次解析进内存：`explore-evidence.cjs`、`find-channels.cjs`、`build-trace-input.cjs`、`rea-type-view.cjs`。**超过 ~500 MB 的文件不要用它们**（Node 有单字符串 512 MiB 硬上限，超了直接 `ERR_STRING_TOO_LONG`）。这个体量请走 `jq` 流式投影，或先用 REA 的 `--filter-output` 缩小输出。 |
 

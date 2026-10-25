@@ -14,14 +14,21 @@ const { openAsar } = require('./asar-lib.cjs');
 const { fd, header, baseOffset } = openAsar(asar);
 
 // ---- flatten the header tree into a file list ----
+// 深度上限防栈溢出：伪造一个几万层嵌套的 header 会让递归炸掉。
+// 真实 asar 的目录层级很少超过 20 层。
+const MAX_DEPTH = 200;
 const files = [];
-(function walk(node, prefix) {
+(function walk(node, prefix, depth) {
+  if (depth > MAX_DEPTH) {
+    console.error(`warning: 目录深度超过 ${MAX_DEPTH} 层，已停止展开 ${prefix || '/'}`);
+    return;
+  }
   for (const [name, child] of Object.entries(node.files || {})) {
     const p = prefix + '/' + name;
-    if (child.files) walk(child, p);
+    if (child.files) walk(child, p, depth + 1);
     else files.push({ path: p, size: child.size || 0 });
   }
-})(header, '');
+})(header, '', 0);
 
 // ---- 1. Extension census ----
 const byExt = {};

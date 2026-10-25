@@ -108,7 +108,7 @@ npx -y rea-agents <命令>          # 或：不装，每次一次性运行
 | 命令报错了，或结果看不懂 | [guides/troubleshooting.md §症状](guides/troubleshooting.md#症状error-cannot-create-a-string-longer-than-0x1fffffe8-characters) | 14 种症状，681 行 |
 | 想看真实产出长什么样 | [case-studies/README.md §案例一](case-studies/README.md#案例一pcl2--从-il-里读出一个启动器的完整架构) | 3 个案例，5.5 / 146 / 567 MB |
 | 想让 AI 替你做分析 | [prompts/README.md §怎么用](prompts/README.md#怎么用) | 2 个文件 / 3 份提示词 |
-| REA 覆盖不到的角度，要自己写解析 | [tools/README.md §脚本清单](tools/README.md#脚本清单) | 15 个脚本，1,261 行 |
+| REA 覆盖不到的角度，要自己写解析 | [tools/README.md §脚本清单](tools/README.md#脚本清单) | 15 个脚本，1,311 行 |
 
 一句话分工：README 只管“凭什么信”和“从哪进”，具体内容由各目录自己的 README 承担，两边不重复写。
 
@@ -118,7 +118,7 @@ npx -y rea-agents <命令>          # 或：不装，每次一次性运行
 grep -E '^\| [0-9]+ \|' guides/by-target-type.md | wc -l          # → 11 类目标
 grep -E '^\| [0-9]+ \|' guides/by-target-type.md | grep -c 零依赖  # → 其中 6 类
 wc -l < guides/troubleshooting.md                                  # → 681 行
-git ls-files 'tools/*.cjs' | xargs wc -l | tail -1                  # → 1261 行 / 15 个脚本
+git ls-files 'tools/*.cjs' | xargs wc -l | tail -1                  # → 1311 行 / 15 个脚本
 ```
 
 （`11 类`用速查表行数计）

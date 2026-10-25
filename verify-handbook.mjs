@@ -601,6 +601,12 @@ console.log('\n【9】README 自述统计');
       }
       const m2 = readme.match(/最长的一个\s*([\d,]+)\s*行/);
       if (m2) claims.push(['tools 最长脚本行数', num(m2[1]), longest[1]]);
+      // 导航表里的写法："15 个脚本，1,311 行"（没有 → 也不是 wc 命令）
+      const m3 = readme.match(/(\d+)\s*个脚本，\s*([\d,]+)\s*行/);
+      if (m3) {
+        claims.push(['导航表脚本数', num(m3[1]), cjs.length]);
+        claims.push(['导航表脚本行数', num(m3[2]), totalLines]);
+      }
     }
   }
 
