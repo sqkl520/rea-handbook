@@ -573,6 +573,26 @@ console.log('\n【9】README 自述统计');
     }
   }
 
+  // ── tools 脚本的行数与数量 ──
+  // README 里 "→ 1191 行 / 14 个脚本" 与 "最长的一个 275 行" 都会随脚本改动漂移。
+  // 实测这两处各漂过一次（1146→1191、261→275），都是改脚本时忘了同步。
+  if (tracked) {
+    const cjs = tracked.filter((f) => /^tools\/[^/]+\.cjs$/.test(f));
+    if (cjs.length) {
+      const totalLines = cjs.reduce((n, f) => n + readFileSync(join(ROOT, f), 'utf8').split('\n').length - 1, 0);
+      const longest = cjs
+        .map((f) => [f, readFileSync(join(ROOT, f), 'utf8').split('\n').length - 1])
+        .sort((a, b) => b[1] - a[1])[0];
+      const m1 = readme.match(/→\s*([\d,]+)\s*行\s*\/\s*([\d,]+)\s*个脚本/);
+      if (m1) {
+        claims.push(['tools 总行数', num(m1[1]), totalLines]);
+        claims.push(['tools 脚本数', num(m1[2]), cjs.length]);
+      }
+      const m2 = readme.match(/最长的一个\s*([\d,]+)\s*行/);
+      if (m2) claims.push(['tools 最长脚本行数', num(m2[1]), longest[1]]);
+    }
+  }
+
   // ── 标签计数 ──
   // README 的「凭什么信」节有一张三档标签表，写着 by-target-type.md 里各有多少处，
   // 配了复算命令。这些数同样会随正文增删漂移（往 guides 里标一个【官方】就变），

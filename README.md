@@ -118,7 +118,7 @@ npx -y rea-agents <命令>          # 或：不装，每次一次性运行
 grep -E '^\| [0-9]+ \|' guides/by-target-type.md | wc -l          # → 11 类目标
 grep -E '^\| [0-9]+ \|' guides/by-target-type.md | grep -c 零依赖  # → 其中 6 类
 wc -l < guides/troubleshooting.md                                  # → 680 行
-git ls-files 'tools/*.cjs' | xargs wc -l | tail -1                  # → 1146 行 / 14 个脚本
+git ls-files 'tools/*.cjs' | xargs wc -l | tail -1                  # → 1191 行 / 14 个脚本
 ```
 
 （`11 类`用速查表行数计）
@@ -350,7 +350,7 @@ node verify-rea-surface.mjs --rea <包目录>  # 或对本地已装的版本（�
 - **`rea capabilities` 的输出本身不完整**，本手册据它写的“哪些可用”也跟着不完整。
 - **567 MB 那个案例只完成了一部分**。分析到 3,757 / 16,197 个源文件就停了；它证明的是“超大目标怎么降级处理”，不是“什么规模都能跑通”。
 - **原生二进制反编译不在本手册范围内**。那条路要 Ghidra / Hopper / IDA，而且平台限制不少：Windows 上 Hopper 不可用、Ghidra 仅实验性支持、固件等类型多为 Linux-only。
-- **`tools/` 的脚本不是产品**。都是“够用就好”的自写解析器，最长的一个 261 行（`wc -l tools/*.cjs | sort -n | tail -2` 的倒数第二行就是这个数），没有测试、没有参数校验，读得懂、可以改，但别当库用。
+- **`tools/` 的脚本不是产品**。都是“够用就好”的自写解析器，最长的一个 275 行（`tools/dotnet-metadata.cjs`）（`wc -l tools/*.cjs | sort -n | tail -2` 的倒数第二行就是这个数），没有测试、没有参数校验，读得懂、可以改，但别当库用。
 - **几百 MB 的 evidence 不是这些脚本处理的**，走 `jq` 流式投影。上面那条 512 MiB 的墙，是 Node/V8 的限制，不是 REA 的限制。
 - **不涉及账号与捐赠回馈机制。** PCL2 那份报告里有一节标着“（略）”，内容是刻意移除的；本手册也**不承诺每个仓库外引用都能点开**，只承诺仓库内的相对链接由 `node verify-handbook.mjs` 全部验过。
 

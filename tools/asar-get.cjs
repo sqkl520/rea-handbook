@@ -9,14 +9,9 @@ if (!asarPath) {
 if (!fs.existsSync(asarPath)) { console.error('file not found: ' + asarPath); process.exit(2); }
 const targets = process.argv.slice(3);
 
-const fd = fs.openSync(asarPath, 'r');
-const head = Buffer.alloc(16);
-fs.readSync(fd, head, 0, 16, 0);
-const jsonLen = head.readUInt32LE(12);
-const hb = Buffer.alloc(jsonLen);
-fs.readSync(fd, hb, 0, jsonLen, 16);
-const header = JSON.parse(hb.toString('utf8'));
-const base = 8 + head.readUInt32LE(4);
+const { openAsar } = require('./asar-lib.cjs');
+const { fd, header, baseOffset } = openAsar(asarPath);
+const base = baseOffset;
 
 function readNode(node, offset) {
   const buf = Buffer.alloc(node.size);

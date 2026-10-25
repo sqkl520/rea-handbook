@@ -26,6 +26,8 @@ for (const m of text.matchAll(re)) found.add(m[0]);
 const segs = (p) => p.split(/[\\/]/).filter(Boolean).length;
 const base = [...found].filter((p) => segs(p) >= 2);
 const all = base.filter((p) => !rootFilter || p.includes(rootFilter));
+// escapeRe 之前只被调用、从未定义：带 rootFilter 跑会在第一次 trim 时 ReferenceError。
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const trim = (p) => (rootFilter ? p.replace(new RegExp('^.*?' + escapeRe(rootFilter)), '') : p);
 
 console.log('leaked source paths:', all.length, rootFilter ? `(filtered by "${rootFilter}"; ${base.length} total)` : '');
@@ -38,7 +40,7 @@ for (const p of all) {
 console.log();
 console.log('=== directories ===');
 for (const [d, c] of [...dirs.entries()].sort((a, b) => b[1] - a[1]).slice(0, 40)) {
-  console.log(String(c).padStart(4), d);
+  console.log(String(c).padStart(4), trim(d));
 }
 
 console.log();

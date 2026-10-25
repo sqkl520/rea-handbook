@@ -10,6 +10,24 @@ if (!asar) {
   process.exit(2);
 }
 if (!fs.existsSync(asar)) { console.error('file not found: ' + asar); process.exit(2); }
+// 只吃 .asar 文件。传目录/其他文件时直接读会抛 EISDIR 或 JSON 解析错误，
+// 换成一句能看懂的话。
+if (fs.statSync(asar).isDirectory()) {
+  console.error('this script takes an .asar file, not a directory: ' + asar);
+  console.error('（要分析解包后的目录，用 asset-taxonomy.cjs 或 css-deep.cjs）');
+  process.exit(2);
+}
+{
+  const fd0 = fs.openSync(asar, 'r');
+  const h = Buffer.alloc(16);
+  const n = fs.readSync(fd0, h, 0, 16, 0);
+  fs.closeSync(fd0);
+  // asar 头部：u32@0 是长度标记，u32@4 是 JSON 头长度；不对就不是 asar
+  if (n < 16 || h.readUInt32LE(0) !== 4) {
+    console.error('not an asar archive (bad header magic): ' + asar);
+    process.exit(2);
+  }
+}
 
 const fd = fs.openSync(asar, 'r');
 const head = Buffer.alloc(16);
@@ -62,13 +80,14 @@ if (!bundles.length) { console.log('(no top-level .js in ' + jsDir + ')'); proce
 // ("react" appears in e.g. "reactive" — require a framework-distinctive token).
 const probes = [
   ['react', /react\.production\.min|react-dom|ReactCurrentOwner|__REACT_DEVTOOLS/],
-  ['React.createElement', /createElement/],
+  ['React.createElement', /React\.createElement|_jsx|\bjsxs?\b/],
   ['jsx-runtime', /jsx-runtime|jsxs\(/],
   ['useState', /\buseState\b/],
   ['useEffect', /\buseEffect\b/],
   ['createContext', /createContext/],
   ['framer-motion', /framer-motion|\bmotion\.\w/],
-  ['radix', /radix/i],
+  // Radix UI 的独有标识（小写 radix 会命中 parseInt(str, radix) 的参数名）
+  ['radix', /RadixPrimitive|@radix-ui|radix-u?i\\?\/react/i],
   ['zustand', /zustand/],
   ['tanstack query', /tanstack\/query|queryCore/],
   ['xstate', /xstate/],

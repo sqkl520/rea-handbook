@@ -10,13 +10,8 @@ if (!asar) {
 }
 if (!fs.existsSync(asar)) { console.error('file not found: ' + asar); process.exit(2); }
 
-const fd = fs.openSync(asar, 'r');
-const head = Buffer.alloc(16);
-fs.readSync(fd, head, 0, 16, 0);
-const jsonLen = head.readUInt32LE(12);
-const hb = Buffer.alloc(jsonLen);
-fs.readSync(fd, hb, 0, jsonLen, 16);
-const header = JSON.parse(hb.toString('utf8'));
+const { openAsar } = require('./asar-lib.cjs');
+const { fd, header, baseOffset } = openAsar(asar);
 
 // ---- flatten the header tree into a file list ----
 const files = [];

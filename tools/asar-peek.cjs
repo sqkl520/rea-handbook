@@ -7,14 +7,39 @@ if (!path) {
   process.exit(2);
 }
 if (!fs.existsSync(path)) { console.error('file not found: ' + path); process.exit(2); }
+if (fs.statSync(path).isDirectory()) {
+  console.error('this script takes an .asar file, not a directory: ' + path);
+  process.exit(2);
+}
+const fileSize = fs.statSync(path).size;
 const fd = fs.openSync(path, 'r');
 const head = Buffer.alloc(16);
-fs.readSync(fd, head, 0, 16, 0);
+const headRead = fs.readSync(fd, head, 0, 16, 0);
 
+// 三道校验。缺了它们，把任意文件当 asar 读会拿垃圾长度去 Buffer.alloc，
+// 轻则 JSON 解析失败，重则直接抛 "Cannot create a string longer than 0x1fffffe8"——
+// 那正是本手册警告读者的那条错误，工具自己不该制造它。
+if (headRead < 16 || head.readUInt32LE(0) !== 4) {
+  console.error('not an asar archive (bad header magic): ' + path);
+  fs.closeSync(fd);
+  process.exit(2);
+}
 const jsonLen = head.readUInt32LE(12);
+if (jsonLen <= 0 || jsonLen > fileSize || 16 + jsonLen > fileSize) {
+  console.error(`not an asar archive (header length ${jsonLen} is out of range for a ${fileSize}-byte file): ` + path);
+  fs.closeSync(fd);
+  process.exit(2);
+}
 const headerBuf = Buffer.alloc(jsonLen);
 fs.readSync(fd, headerBuf, 0, jsonLen, 16);
-const header = JSON.parse(headerBuf.toString('utf8'));
+let header;
+try {
+  header = JSON.parse(headerBuf.toString('utf8'));
+} catch {
+  console.error('not an asar archive (header is not valid JSON): ' + path);
+  fs.closeSync(fd);
+  process.exit(2);
+}
 
 // Data region starts after the second pickle: 8-byte size pickle + full header pickle.
 const baseOffset = 8 + head.readUInt32LE(4);
