@@ -41,7 +41,8 @@ PCL2 是一个**把"启动游戏"这件事做到工业化程度**的启动器：
   mscorlib, PresentationFramework, PresentationCore, System.Xaml, WindowsBase   ← WPF
   Microsoft.VisualBasic, System, System.Core, System.Drawing, System.Windows.Forms  ← VB.NET + 混用 WinForms
   Newtonsoft.Json          ← 版本 JSON 解析
-  MeloongCore, MeloongCore.Wpf   ← 作者的通用 .NET 库（MeloongCore，公开仓库，Apache-2.0；PCL 仓库的 submodule）
+  MeloongCore, MeloongCore.Wpf   ← 作者的通用 .NET 库（PCL 仓库的 submodule，自身仓库用 Apache-2.0；
+                                 ← 注意 PCL 主仓不是 Apache-2.0，它用《PCL 分发有限许可》）
   PCLCS                    ← 自家 C# 辅助库（VB 主工程 + C# 工具库）
   System.IO.Compression    ← zip 处理
   NAudio                   ← 音频（音乐播放/BGM）
@@ -104,11 +105,15 @@ FrmInstanceModDisabled, FrmInstanceSetup, FrmInstanceExport, FrmDownloadResource
 ### 持久化：INI 文件，不是 JSON/数据库
 
 ```vb
-IniGetContent(path) -> Dictionary(Of String, String)
-ReadIni(path, section, key) -> String
-WriteIni(path, section, key, value)
+IniGetContent(path) -> ConcurrentDictionary(Of String, String)   ' Private
+ReadIni(path, key, Optional defaultValue) -> String
+WriteIni(path, key, value)                                       ' value 为 Nothing 时删除该键
 HasIniKey / DeleteIniKey / IniClearCache
 ```
+
+**INI 是扁平的单层 `键:值`，没有节（section）的概念**——`IniGetContent` 直接按第一个冒号切分，
+`WriteIni` 遇到键名含冒号还会抛异常。所以 PCL2 的配置不存在 `[Section]` 分组，
+这也是它"文件小、可手改"的一部分原因。
 
 **所有配置走 INI 文本**，且有一层内存缓存（`IniCache`）。这解释了为什么 PCL2 的配置文件
 人类可读、可手工编辑、可版本对比——对"用户自己折腾"的场景是正确选择。
@@ -144,7 +149,9 @@ GetResultWithTimeout(task, ..., ms) ' 带超时的等待
 
 两者目的不同。这里讲的是**运行时的那个**，因为它是每次启动都会走的路径。
 
-#### 运行时继承合并（`ModMinecraft.cs:461-533`）
+#### 运行时继承合并（`ModMinecraft.vb:420-495`）
+
+> 同样转写成 C# 便于阅读；源码是 VB.NET。
 
 核心是**惰性合并（merge-on-access）**：磁盘上**不物化合并结果**，
 每次访问 `JsonObject` 时在内存里合并一次。
@@ -152,7 +159,7 @@ GetResultWithTimeout(task, ..., ms) ' 带超时的等待
 ```csharp
 // 1. HMCL 格式的特殊处理（含 patches 数组且无 time）
 if (有 patches && 无 time) {
-    _JsonObject["patches"] 按 id 排序 → 逐个 Merge   // "合并 HMCL 分支项：{0}"
+    _JsonObject["patches"] 按 priority 排序 → 逐个 Merge   // "合并 HMCL 分支项：{0}"
     _JsonObject["id"] = Name;                        // 注入 id
     _JsonObject.Remove("inheritsFrom");              // 清继承标记
 }
@@ -284,7 +291,9 @@ NameToVersion(string)     // 特殊别名映射
 它是**"全局五档默认策略 + 实例级显式覆盖"**的组合，
 而且**首次判定时有三重兜底**。
 
-#### 精确的判定逻辑（源码级，`ModMinecraft.cs:103-145`）
+#### 精确的判定逻辑（源码级，`ModMinecraft.vb:240-282`）
+
+> 源码是 VB.NET，下面转写成 C# 便于阅读；逻辑与源码逐行对应。
 
 ```csharp
 public string PathIndie {
@@ -356,7 +365,7 @@ PCL2 直接照做，**并且把判定结果持久化**（`Settings.Set("VersionA
 注意 **`3` 是"或"（`||`）不是"与"**——即**满足任一条件就隔离**，
 比 `2` 和 `1` 都更激进。
 
-`Modable` 的判定（`ModMinecraft.cs`）：
+`Modable` 的判定（`ModMinecraft.vb`，转写成 C#）：
 ```csharp
 public bool Modable => HasFabric || HasForgelike || HasLiteLoader || DisplayType;
 ```
@@ -873,6 +882,10 @@ Dl*ListBmclapi         ← 只用镜像
 
 PCL 自建服务器（`pcl2-server`）的资源 URL 以 `{CDN}` 结尾，
 由 `ModSecret.SecretCdnSign` 替换为**带签名的 CDN 地址**（具体签名算法不在此记录）。
+
+> **证据边界**：本节的判断来自 2.13.1.1 发布版二进制。在开源版源码里，
+> `SecretCdnSign` 已被裁剪成空壳——只做 `{CDN}` 占位符替换和 URL 编码，
+> 不含任何签名逻辑。所以"带签名"这个结论只对发布版成立，不能用源码交叉验证。
 
 **为什么要签名**：这是 PCL 自建的"主页市场""公告"等服务的 CDN 地址，
 签名用于**限制第三方直接引用其 CDN 资源**，避免流量被外部站点消耗。
@@ -2622,6 +2635,11 @@ DragHelper.MAX_PATH          = 260
 **埋点走腾讯云 CLS**（`ap-shanghai` 区域）——**不是 Google Analytics 或第三方**。
 这符合 PCL2 一贯的"数据尽量留在国内、依赖尽量自建"的取向。
 
+> **证据边界**：开源版源码里 `ClsBaseUrl = ""`（空串），region 只是 `{region}` 占位符；
+> 上报逻辑 `Telemetry()` 有短路条件"`ClsBaseUrl` 不以 `http` 开头就不上报"。
+> 所以具体的 `ap-shanghai` 只能从 2.13.1.1 发布版二进制的字符串堆里读到，
+> 无法用源码交叉验证。
+
 #### 这个常量表本身就是设计文档
 
 **368 个常量集中在字段初值里**，而不是散落在方法体中。
@@ -2653,7 +2671,8 @@ PCL2 有一个**不太为人知但技术上很有意思**的功能：**一键联
 "准备下载联机模块" / "下载联机模块" / "启动联机模块"
 "联机模块已崩溃" / "联机模块主时钟出错" / "读取 EasyTier 信息失败"
 "tcp://mc1.easytier.cn:55558"      ← 自建的公共节点
-"https://easytier.meloong.com/?page=1&per_page=1000"   ← 节点列表服务
+"https://uptime.easytier.cn/api/nodes"  ← 社区节点源（首选）
+"https://easytier.meloong.com/?page=1&per_page=1000"   ← 作者自建节点源（回退）
 "从源站获取节点列表失败，将使用 CDN 缓存"
 "CPU 是不支持的 {0} 架构，这可能会导致联机模块无法启动！"
 ```
@@ -2690,8 +2709,13 @@ PCL2 把它作为**外部 CLI 程序下载并管理**，而不是自己实现穿
 ```
 
 **"请让房主使用非社区版"** 这条很说明问题：正式版会**拒绝 10 位的社区版邀请码**
-（源码注释里写作 `PCL CE`）。也就是说，社区版（PCL-CE，由社区独立维护的分支）
-与正式版在联机协议上不互通，而不是"正式版提供、社区版阉割"的产品线关系。
+（源码注释里写作 `PCL CE`）。判据是**邀请码长度**——正式版的标准格式是 23 位，
+任何 10 位字符串都被判为 CE，源码里没有解析、没有版本号比较、没有握手失败。
+真正的协议版本检查是另一条分支（比较邀请码第 18–19 位嵌入的 `INVITE_CODE_VERSION`）。
+所以这是**格式层面的不兼容**，不是协议握手层面的不互通。
+
+另外，源码本身只区分 `OpenSource` / `Official` 两种构建（`VersionBranchMain`），
+**没有"社区版"这个概念**——PCL-CE 是项目外独立维护的分支，这里只能从"被拒绝的邀请码长度"看出它的存在。
 
 ### 10.3 NAT 类型诊断（技术上最专业的部分）
 
@@ -2738,7 +2762,7 @@ enum LinkStates { Waiting, Loading, Failed, Finished }
 | **邀请码抽象** | 用户不需要理解"网络名/密码/节点"，只需要转发一串码 |
 | **检测剪贴板**（"是否使用复制的邀请码"） | 减少一次手工操作 |
 | **显示 NAT 类型 + Ping + 中继状态** | 用户可自助诊断，减少求助 |
-| **社区版不提供** | 社区版（PCL-CE）是独立维护的分支，与正式版的联机协议不互通 |
+| **社区版不提供** | 社区版邀请码是 10 位、正式版是 23 位，按长度直接判为不兼容 |
 | **节点列表有 CDN 回退** | 单点故障时仍可用 |
 
 **这是"平台化"的思路**：PCL2 不只启动游戏，还提供**联机基础设施**。
@@ -2751,7 +2775,8 @@ enum LinkStates { Waiting, Loading, Failed, Finished }
 **这是 PCL2 最独特的架构决策**，也是它生态化的核心。
 
 > **先纠正一个容易搞错的点**：主页不是 `PageLinkMain`（那是**联机页**，
-> `PageLinkMain` 的字段是 `NATType` / `NetworkSecret` / `InviteCode`）。
+> `PageLinkMain` 的成员是 `NATType` / `NetworkSecret` 两个私有字段，
+> 外加一个 `GetInviteCode()` 方法——邀请码是拼出来的（网络名-网络密钥-版本），不是存储的字段）。
 > **真正的主页是 `PageLaunchRight`**（`Pages\PageLaunch\PageLaunchRight.xaml.vb`，
 > 即“启动页右侧”），它实现了 `IRefreshable` / `IDispatcherUnhandledException`。
 
@@ -3191,7 +3216,7 @@ Log("下载原版支持库文件")     ' 阅读方法字符串 = 阅读执行流
 
 ```
 E:\Projects\PCL\本体代码\
-├── MeloongCore\                         ← 独立共享库（作者自建，公开仓库 Apache-2.0）
+├── MeloongCore\                         ← 独立共享库（作者自建，submodule，其自身仓库用 Apache-2.0）
 │   └── Shared\
 │       ├── Utils\  CryptographyUtils.cs, DirectoryUtils.cs, FileUtils.cs,
 │       │           PathUtils.cs, RegistryUtils.cs, TaskUtils.cs
@@ -3218,7 +3243,7 @@ E:\Projects\PCL\本体代码\
         │                  PageInstanceMod.xaml.vb, PageInstanceSetup.xaml.vb
         ├── PageLaunch\    MyMsgLogin.xaml.vb, MySkin.xaml.vb,
         │                  ★ PageLaunchRight.xaml.vb ← 主页！PageLoginAuthSkin/PageLoginMs.xaml.vb
-        ├── PageLink\      PageLinkMain.xaml.vb ← 联机页（NAT/InviteCode）
+        ├── PageLink\      PageLinkMain.xaml.vb ← 联机页（NAT 类型 / GetInviteCode 合成邀请码）
         └── PageSetup\     PageSetupLaunch.xaml.vb, PageSetupLeft.xaml.vb,
                            PageSetupSystem.xaml.vb
 ```
@@ -3248,7 +3273,7 @@ E:\Projects\PCL\本体代码\
 
 **这是逆向中最意外的一块收获**。从 `.text` 段的 UTF-16 数据里，
 还原出了 `MeloongCore` 这个**独立共享库**的完整能力清单
-（它被主程序和 `MeloongCore.Wpf` 共用）。
+（它和 `MeloongCore.Wpf` 分别被主工程与 `PCLCS` 引用——是这两个库各自被引用，不是 Wpf 用 Shared）。
 
 #### 12.3.1 日志系统（`Logger.cs`）
 
@@ -3379,7 +3404,7 @@ Worker 工具（RedoableWorker.cs）:
 ```
 
 
-#### 12.4.4 内嵌程序集 `PCLCS`
+#### 12.3.6 内嵌程序集 `PCLCS`
 
 `AssemblyRef` 里有 `PCLCS` 但在文件系统上找不到——因为它**作为资源打包在主程序内**
 （`ManifestResource: 2` 的来源）。从资源里提取出来是 **918KB、68 个类型、175 个方法**。
@@ -3388,30 +3413,33 @@ Worker 工具（RedoableWorker.cs）:
 
 ```
 PCLCS 命名空间的类型：
-  Configs / ResourceTypes / ResourcePlatforms / ModLoaders / Versions
-    ← 枚举定义
+  Configs / ResourceTypes / ResourcePlatforms / ModLoaders   ← 枚举（前三个是 [Flags] 位标志）
+  Versions                                                  ← 静态类 + const，不是枚举
   Java / JavaUtils / LaunchUtils   ← Java 检测与启动（异步：CheckAllAsync / SearchFoldersAsync）
   WikiEntry / Resource             ← 数据模型
 ```
 
-**枚举值本身揭示了设计细节**：
+**这些定义本身揭示了设计细节**：
 
 ```vb
-' 每个子系统独立版本号 —— ★ 这是正确做法
-Versions: LocalModCacheVersion, McInstanceCacheVersion,
-          JavaConfigVersion, McInstallManifestVersion
+' 每个子系统独立版本号（静态类 + const，不是枚举）—— ★ 这是正确做法
+Versions: LocalModCacheVersion=21, McInstanceCacheVersion=39,
+          JavaConfigVersion=1, McInstallManifestVersion=1
 
-' 资源配置
-ResourceTypes:     Mod, ModPack, ResourcePack, Shader, DataPack, Plugin, Map,
-                   ModOrDataPack, Any
+' 资源配置（[Flags] 位标志）
+ResourceTypes:     Mod=1, ModPack=2, ResourcePack=4, Shader=8, DataPack=16,
+                   Plugin=32, Map=64, ModOrDataPack=Mod|DataPack,
+                   Any=Mod|ModPack|ResourcePack|Shader|DataPack|Plugin|Map
 ResourcePlatforms: CurseForge, Modrinth, Any
-ModLoaders:        None, Forge, LiteLoader, Fabric, NeoForge, All
-                   （注意：只有 6 个，OptiFine 被当作 Mod 处理）
+ModLoaders:        None=0, Forge=1, LiteLoader=2, Fabric=4, NeoForge=16,
+                   All=Forge|LiteLoader|Fabric|NeoForge
+                   （只有 6 个。NeoForge 占 16 而不是 8，说明 8 这个位曾属于某个
+                     后来移出的加载器——很可能就是 OptiFine，现在它走独立字段）
 
 Configs: JavaConfigVersion, JavaList, JavaRemovedList, JavaMigrated, JavaForced
 ```
 
-**`Versions` 这个枚举特别值得注意**——它证明 **PCL2 对每个需要迁移的子系统
+**`Versions` 这个静态类特别值得注意**——它证明 **PCL2 对每个需要迁移的子系统
 都有独立版本号**（Mod 缓存/实例缓存/Java 配置/安装清单）。
 对比 PCL2 文档 §7.2（实例导出）里那条建议：**"资产的版本是需要比较、迁移、
 回滚的一等概念，不是布尔标记"**——这里就是那个原则的具体实现。
@@ -3478,7 +3506,8 @@ ClsBaseUrl / OAuthClientId / RegFolder
 https://pcl2-server-1253424809.file.myqcloud.com/ServerConfig.json{CDN}
 https://pcl2-server-1253424809.file.myqcloud.com/notice.json{CDN}
 https://pcl2-server-1253424809.file.myqcloud.com/minecraft/download.json{CDN}
-https://easytier.meloong.com/?page=1&per_page=1000     ← 联机节点列表
+https://uptime.easytier.cn/api/nodes                  ← 联机节点列表（社区源）
+https://easytier.meloong.com/?page=1&per_page=1000     ← 同一列表的备用源（作者自建）
 ```
 字符串：`从源站获取节点列表失败，将使用 CDN 缓存`
 → **源站 + CDN 双层回退**，`{CDN}` 是运行时替换参数（增加抓取成本）。
