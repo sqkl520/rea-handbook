@@ -6,11 +6,11 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-f4c430?style=flat-square)](LICENSE)
 [![Unofficial handbook](https://img.shields.io/badge/REA-Unofficial%20handbook-d73a49?style=flat-square)](NOTICE.md)
-[![Based on REA 6.5.0](https://img.shields.io/badge/based%20on-REA%206.5.0-blue?style=flat-square)](https://www.npmjs.com/package/rea-agents)
+[![Based on REA 6.8.0](https://img.shields.io/badge/based%20on-REA%206.8.0-blue?style=flat-square)](https://www.npmjs.com/package/rea-agents)
 
 **给第一次用 REA 的人：一本把坑写清楚、仓库自身的统计都配了复算命令的第三方手册。**
 
-<sub>非官方第三方手册 · 基于 REA 6.5.0 写出 · 三平台覆盖不均（详见「这本手册会过期」）</sub>
+<sub>非官方第三方手册 · 基于 REA 6.8.0 写出 · 三平台覆盖不均（详见「这本手册会过期」）</sub>
 
 REA 是一个本地跑的逆向工程工具：一个 CLI 加一个 MCP server，把“读二进制、读打包产物”
 变成结构化证据喂给 AI agent。默认是静态的——读完就给你一张带出处的图，不运行目标；
@@ -92,7 +92,7 @@ npx -y rea-agents <命令>          # ③ 不装：每次一次性运行，机�
 
 装完先跑 `rea doctor`，确认本机哪些能力可用。`healthy: false` 很常见——原因和怎么判断见下文「手册里几个最有价值的发现」末尾那段「顺带一条最容易误判的」。`node verify-handbook.mjs` 是另一回事——它查的是这份手册本身有没有坏，不是查你的安装。
 
-前置是 Node.js 22.19+ / 24.11+ / 26+（不支持 23、25 及 prerelease），这是 REA **6.5.0** 的 `package.json` 里 `engines` 字段原文：`^22.19.0 || ^24.11.0 || >=26.0.0`。**6.8.0 已抬到 `^22.23.4 || ^24.22.1 || >=26.12.1`**，装新版前先 `node --version`。大部分能力零依赖：静态分析 JavaScript/Electron、Go/Rust 二进制、.NET 程序集、PE 资源、Electron fuses 等，只要 Node.js；需要 Ghidra/Hopper/IDA 的只有原生二进制反编译一类。SQLite 另有更严的门槛，见下文「手册里几个最有价值的发现」。
+前置是 Node.js **`^22.23.4 || ^24.22.1 || >=26.12.1`**（不支持 23、25 及 prerelease；注意 26.x 也不是任意版本，要 26.12.1+）。这是 REA 6.8.0 的 `package.json` 里 `engines` 字段原文。**SQLite 另有独立门槛**，两者交叉后有两段死区，见 `docs/01-getting-started.md` §2.2。大部分能力零依赖：静态分析 JavaScript/Electron、Go/Rust 二进制、.NET 程序集、PE 资源、Electron fuses 等，只要 Node.js；需要 Ghidra/Hopper/IDA 的只有原生二进制反编译一类。
 
 然后在 agent 里直接说话：
 
@@ -106,10 +106,10 @@ npx -y rea-agents <命令>          # ③ 不装：每次一次性运行，机�
 
 | 你的处境 | 翻哪一篇 | 可复算的规模 |
 | --- | --- | --- |
-| 第一次装，不知道先跑哪条命令 | [docs/01-getting-started.md §1](docs/01-getting-started.md#1-rea-是什么) | `wc -l < docs/01-getting-started.md` → 748 |
+| 第一次装，不知道先跑哪条命令 | [docs/01-getting-started.md §1](docs/01-getting-started.md#1-rea-是什么) | `wc -l < docs/01-getting-started.md` → 757 |
 | 要把 REA 接进你的 AI agent | [docs/02-agent-integration.md §一条命令](docs/02-agent-integration.md#一条命令搞定推荐) | — |
 | 手上有个目标，不知道该用哪个命令 | [guides/by-target-type.md §速查表](guides/by-target-type.md#目标类型速查) | 11 类目标，其中 6 类零依赖 |
-| 命令报错了，或结果看不懂 | [guides/troubleshooting.md §症状](guides/troubleshooting.md#症状error-cannot-create-a-string-longer-than-0x1fffffe8-characters) | 14 种症状，681 行 |
+| 命令报错了，或结果看不懂 | [guides/troubleshooting.md §症状](guides/troubleshooting.md#症状error-cannot-create-a-string-longer-than-0x1fffffe8-characters) | 14 种症状，695 行 |
 | 想看真实产出长什么样 | [case-studies/README.md §案例一](case-studies/README.md#案例一pcl2--从-il-里读出一个启动器的完整架构) | 3 个案例，5.5 / 146 / 567 MB |
 | 想让 AI 替你做分析 | [prompts/README.md §怎么用](prompts/README.md#怎么用) | 2 个文件 / 3 份提示词 |
 | REA 覆盖不到的角度，要自己写解析 | [tools/README.md §脚本清单](tools/README.md#脚本清单) | 15 个脚本，1,311 行 |
@@ -121,7 +121,7 @@ npx -y rea-agents <命令>          # ③ 不装：每次一次性运行，机�
 ```bash
 grep -E '^\| [0-9]+ \|' guides/by-target-type.md | wc -l          # → 11 类目标
 grep -E '^\| [0-9]+ \|' guides/by-target-type.md | grep -c 零依赖  # → 其中 6 类
-wc -l < guides/troubleshooting.md                                  # → 681 行
+wc -l < guides/troubleshooting.md                                  # → 695 行
 git ls-files 'tools/*.cjs' | xargs wc -l | tail -1                  # → 1311 行 / 15 个脚本
 ```
 
@@ -264,11 +264,11 @@ grep -rn "不是完整能力清单" docs/ guides/
 复算基线（三个数都印在各篇开头的注释块里，克隆后可查）：
 
 ```bash
-grep -rn "最后核对日期" docs/ guides/              # → 3 处，全是 2026-10-18
-grep -rn "6\.5\.0" docs/ guides/ | grep -c 版本     # → 6 处版本锚点
+grep -rn "最后核对日期" docs/ guides/              # → 3 处，全是 2026-10-25
+grep -rn "6\.8\.0" docs/ guides/ | grep -c 版本     # → 6 处版本锚点
 ```
 
-若与官方文档冲突，**以官方为准**。本手册基于 REA 6.5.0 写出，行为可能随版本变化。
+若与官方文档冲突，**以官方为准**。本手册基于 REA 6.8.0 写出，行为可能随版本变化。
 
 ## 两个被推翻的判断
 
@@ -296,7 +296,7 @@ rea-handbook/
 ```
 
 ```bash
-git ls-files | wc -l                              # → 39 个入库文件
+git ls-files | wc -l                              # → 41 个入库文件
 git ls-files '*.md' | wc -l                       # → 17 篇 Markdown
 git ls-files 'tools/*.cjs' | wc -l                # → 15 个脚本
 ```
@@ -305,11 +305,11 @@ git ls-files 'tools/*.cjs' | wc -l                # → 15 个脚本
 
 | 目录 | 文件数 | 行数 |
 | --- | --- | --- |
-| `docs/` | 3 | 1,086 |
-| `guides/` | 3 | 1,319 |
+| `docs/` | 3 | 1,095 |
+| `guides/` | 3 | 1,336 |
 | `case-studies/` | 5 | 4,638 |
 | `prompts/` | 3 | 669 |
-| 合计 | 14 | 7,712 |
+| 合计 | 14 | 7,738 |
 
 这 15 个脚本只 `require` Node 内置模块，仓库里没有 `package.json`，也没有 `node_modules`。克隆后直接 `node tools/asar-peek.cjs <app.asar> package.json` 就能跑：
 
@@ -350,9 +350,10 @@ node verify-rea-surface.mjs --rea <包目录>  # 或对本地已装的版本（�
 
 ## 这本手册会过期，也有些事它做不到
 
-- **会过期，而且已经部分过期**。全部内容基于 REA **6.5.0**（2026-10-14）。截至 2026-10-25，上游已发到 **6.8.0**，中间还有 6.7.0。
-  已确认失效的两处：**Node 版本要求**（6.8.0 抬到 `^22.23.4 || ^24.22.1 || >=26.12.1`）和 **`doctor --provider` 的 id 列表**（6.8.0 新增 `kuna`，共 5 个）。
-  命令本身没有删除、没有改名，所以其余内容仍可参照。行为漂移是常态——复跑对不上，正常。
+- **会过期**。全部内容核对到 REA **6.8.0**（2026-10-25）。
+  **三个案例研究仍是 6.5.0 时期做的分析**（当时的上游版本），那部分数据冻结不动——
+  命令在 6.8.0 上仍然存在，但具体数字不会因为版本升级而变化，因为它们是那一次分析的产出。
+  行为漂移是常态——复跑对不上，正常。`verify-rea-surface.mjs` 每周对上游核一次。
 - **`rea capabilities` 的输出本身不完整**，本手册据它写的“哪些可用”也跟着不完整。
 - **567 MB 那个案例只完成了一部分**。分析到 3,757 / 16,197 个源文件就停了；它证明的是“超大目标怎么降级处理”，不是“什么规模都能跑通”。
 - **原生二进制反编译不在本手册范围内**。那条路要 Ghidra / Hopper / IDA，而且平台限制不少：Windows 上 Hopper 不可用、Ghidra 仅实验性支持、固件等类型多为 Linux-only。
@@ -364,7 +365,7 @@ node verify-rea-surface.mjs --rea <包目录>  # 或对本地已装的版本（�
 
 ## 反馈与贡献
 
-什么算 bug：你在 6.5.0（或你已逐条核对过的更新版本）上跑出与本手册不同的行为，且能给出命令与输出。什么算提案：缺的目标类型、缺的平台、缺的症状条目。
+什么算 bug：你在 6.8.0 上跑出与本手册不同的行为，且能给出命令与输出。什么算提案：缺的目标类型、缺的平台、缺的症状条目。
 
 提之前请先跑这两条，它们能一次扫出死链、敏感残留和结构缺件：
 

@@ -12,5 +12,5 @@ REA 使用手册的正文——从这里开始。
 [troubleshooting.md](../guides/troubleshooting.md) 是 **14 种症状的排查手册**（卡住了来这查）。
 想看真实产出直接翻 [case-studies/](../case-studies/)。
 
-> 本手册是第三方材料，基于 REA 6.5.0 编写。官方文档是权威：
+> 本手册是第三方材料，基于 REA 6.8.0 编写。官方文档是权威：
 > <https://github.com/morluto/rea>（`docs/` 目录）。冲突时以官方为准。

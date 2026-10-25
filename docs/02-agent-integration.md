@@ -1,5 +1,5 @@
 <!--
-  基于 REA 6.5.0 编写。
+  基于 REA 6.8.0 编写。
   事实来源：官方 docs/installation.md、docs/client-configuration.md（权威）+ 本机实测（标注"实测"）。
   最后核对：2026-10-18
 -->
@@ -51,7 +51,7 @@ setup 支持 **24 个** agent（`docs/installation.md` §Supported agents）。�
 
 完整列表（含 `kimi`、`hermes`、`trae`、`zcode` 等）见官方 `docs/installation.md`。
 
-> ⚠️ **`dsh`、`kimi`、`workbuddy` 需要 6.5.0+**。官方文档的 registry 检查（6.4.0）未覆盖它们。
+> ⚠️ **`dsh`、`kimi`、`workbuddy` 需要 6.5.0+**（6.8.0 当然也支持）。官方文档的 registry 检查（6.4.0）未覆盖它们。
 
 ### 非交互式（脚本里用）
 
@@ -119,7 +119,7 @@ rea setup --json
   "mcpServers": {
     "rea": {
       "command": "npx",
-      "args": ["-y", "rea-agents@6.5.0", "mcp"]
+      "args": ["-y", "rea-agents@6.8.0", "mcp"]
     }
   }
 }
@@ -138,7 +138,7 @@ Windows 上 stdio 客户端**起不来 npx shim**，必须套一层 `cmd.exe`：
   "mcpServers": {
     "rea": {
       "command": "cmd.exe",
-      "args": ["/d", "/c", "npx", "-y", "rea-agents@6.5.0", "mcp"]
+      "args": ["/d", "/c", "npx", "-y", "rea-agents@6.8.0", "mcp"]
     }
   }
 }
@@ -205,13 +205,13 @@ try {
 从项目目录运行：
 
 ```bash
-claude mcp add --scope local rea -- npx -y rea-agents@6.5.0 mcp
+claude mcp add --scope local rea -- npx -y rea-agents@6.8.0 mcp
 ```
 
 Windows：
 
 ```bash
-claude mcp add --scope local rea -- cmd.exe /d /c npx -y rea-agents@6.5.0 mcp
+claude mcp add --scope local rea -- cmd.exe /d /c npx -y rea-agents@6.8.0 mcp
 ```
 
 local scope 的条目存在 `~/.claude.json` 里**该目录路径下**，其他项目不加载。
@@ -256,9 +256,9 @@ rea mcp doctor --json
 {
   "healthy": true,
   "adapter": "production-stdio",
-  "server": { "name": "rea", "version": "6.5.0", "protocol_version": "2025-11-25" },
+  "server": { "name": "rea", "version": "6.8.0", "protocol_version": "2025-11-25" },
   "inventory": {
-    "tools":   { "expected": 207, "observed": 207, "missing": [], "unexpected": [] },
+    "tools":   { "expected": 229, "observed": 229, "missing": [], "unexpected": [] },
     "prompts": { "expected": 6,   "observed": 6 }
   },
   "request_flow": { "tool": "binary_session", "ok": true }

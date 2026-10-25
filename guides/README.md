@@ -7,7 +7,7 @@
 | [by-target-type.md](by-target-type.md) | **知道要分析什么**（.NET 程序集 / Electron 应用 / Go、Rust 二进制 / APK / SQLite / 网站…）→ 找到对应的命令序列，复制即用 |
 | [troubleshooting.md](troubleshooting.md) | **卡住了**（报错、结果看起来不对、命令没输出…）→ 按你看到的现象查 |
 
-两篇都基于 REA 6.5.0 写成，但**标注体系不同**：
+两篇都基于 REA 6.8.0 写成，但**标注体系不同**：
 
 - [by-target-type.md](by-target-type.md) 用【官方】/【实测】/【我们的发现】三级标签
 - [troubleshooting.md](troubleshooting.md) 用 `[官方已说明]` / `[手册补充]` 两级标记

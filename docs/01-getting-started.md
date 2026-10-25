@@ -1,16 +1,16 @@
 <!--
   REA 入门指南（Getting Started）
-  基于版本：REA 6.5.0（npm 包 `rea-agents`；bin 命令：`rea` / `rea-agents`）
+  基于版本：REA 6.8.0（npm 包 `rea-agents`；bin 命令：`rea` / `rea-agents`）
 
   事实来源：
    - 官方文档（仓库 morluto/rea）：README.md、docs/installation.md、docs/cli.md、
      docs/sqlite-databases.md、docs/javascript-artifact-reconstruction.md、
      docs/binary-diagnostics.md、docs/process-capture.md 等
-   - 实测记录：Windows 10 x64 + Node.js 24.14.0 + REA 6.5.0（2026-10-18 核对）。
+   - 实测记录：Windows 10 x64 + Node.js 26.12.1 + REA 6.8.0（2026-10-25 核对）。
      文中标注「实测」的行为来自本手册作者的验证；未标注的以官方文档为准。
    - 官方文档与本手册表述冲突时，以官方文档为准（官方仓库：github.com/morluto/rea）。
 
-  最后核对日期：2026-10-18
+  最后核对日期：2026-10-25
 -->
 
 # 01 · 入门指南：安装、验证与第一次分析
@@ -45,33 +45,25 @@ REA 返回的不只是反编译文本，还有模块关系、IPC 配对、构建
 
 ### 2.1 Node.js 版本（精确范围）
 
-> **⚠️ 本节已随上游发布两次抬升。** 下方表格是 **REA 6.5.0** 的要求，手册正文也以 6.5.0 为基线。
-> **REA 6.8.0（2026-10-25）把门槛提高了**：
->
-> ```text
-> 6.5.0: ^22.19.0 || ^24.11.0 || >=26.0.0
-> 6.8.0: ^22.23.4 || ^24.22.1 || >=26.12.1
-> ```
->
-> 也就是说，6.5.0 时代可用的 22.19–22.22、24.11–24.21、26.0–26.11 **在 6.8.0 上全部不可用**。
-> 装新版之前先 `node --version`；本节的交叉区间表只对 6.5.0 成立。
-
-REA 6.5.0 要求的 Node.js 版本是 **精确的三段区间**（来自 `package.json` 的 `engines`）：
+REA **6.8.0** 要求的 Node.js 版本是**精确的三段区间**（来自 `package.json` 的 `engines`）：
 
 ```text
-^22.19.0 || ^24.11.0 || >=26.0.0
+^22.23.4 || ^24.22.1 || >=26.12.1
 ```
 
 阅读方式：
 
 | 你要的版本线 | 要求 | 例子 |
 | --- | --- | --- |
-| Node.js 22.x | `>= 22.19.0` | 22.19.0 ✅ / 22.18.0 ❌ |
-| Node.js 24.x | `>= 24.11.0` | 24.11.0 ✅ / 24.10.0 ❌ |
-| Node.js 26+ | 任意 26.x 及以上 | 26.0.0 ✅ |
+| Node.js 22.x | `>= 22.23.4` | 22.23.4 ✅ / 22.23.3 ❌ |
+| Node.js 24.x | `>= 24.22.1` | 24.22.1 ✅ / 24.22.0 ❌ |
+| Node.js 26+ | `>= 26.12.1`（**不是任意 26.x**） | 26.12.1 ✅ / 26.11.0 ❌ |
 
 **明确不支持**：Node.js 23、Node.js 25、以及所有 prerelease（含 nightly/canary）。
 如果 `node --version` 落在这些版本上，先升级或改用受支持的版本线。
+
+> **6.8.0 把门槛抬得比看上去更狠**：26.x 从「任意 26.x」收紧成「>= 26.12.1」。
+> 早先的 6.5.0 允许 26.0.0，现在 26.0–26.11 全部不可用了。
 
 npm 是必需的（REA 使用与该 runtime 配对的 npm）。
 REA **从不**擅自升级你的 Node.js、npm 或 Homebrew。
@@ -86,23 +78,30 @@ npx --version
 
 ### 2.2 SQLite 的额外门槛（务必读）
 
-这是最容易踩的版本陷阱。**SQLite 分析有单独、更严格的 Node.js 要求**，
-比 REA 整体的要求更严：
+**SQLite 分析有单独的门槛，而它在 6.8.0 里没有跟着抬**——这就造出了两个
+反直觉的死区，比 6.5.0 时代更绕：
 
 ```text
-SQLite 能力要求：Node.js 24.x >= 24.15，或 26+
+整体要求（6.8.0）：^22.23.4 || ^24.22.1 || >=26.12.1
+SQLite 要求（未变）：24.x >= 24.15，或 26+
 ```
 
-于是出现一个**交叉区间**：
+两条约束交叉后：
 
-| Node.js 版本 | 满足 REA 整体要求？ | 满足 SQLite 要求？ |
-| --- | --- | --- |
-| 22.19.0 – 22.x | ✅ | ❌（SQLite 需要 24.15+/26+） |
-| **24.11.0 – 24.14.x** | ✅ | ❌ **交叉区间——一切可用，唯独 SQLite 不可用** |
-| 24.15.0 – 24.x | ✅ | ✅ |
-| 26+ | ✅ | ✅ |
+| Node.js 版本 | 整体要求 | SQLite | 结论 |
+| --- | --- | --- | --- |
+| `< 22.23.4` | ❌ | ❌ | 装不上 REA |
+| 22.23.4 – 22.x | ✅ | ❌ | **整体可用，SQLite 不可用** |
+| 24.11.0 – 24.14.x | ❌ | ❌ | 装不上 REA |
+| **24.15.0 – 24.21.x** | ❌ | ✅ | **死区①：SQLite 够格，但整体不够——装不上 REA** |
+| **24.22.1 – 24.x** | ✅ | ✅ | 都可用 |
+| **26.0.0 – 26.11.x** | ❌ | ✅ | **死区②：SQLite 够格，但整体不够——装不上 REA** |
+| `>= 26.12.1` | ✅ | ✅ | 都可用 |
 
-落在交叉区间时会发生什么（实测）：
+两个死区是最容易踩的：**你按 SQLite 的文档升到了 24.15，结果 REA 根本装不上**。
+反过来，22.x 虽然能装，但 SQLite 用不了。
+
+落在"整体可用、SQLite 不可用"（22.23.4–22.x）时会发生什么（实测）：
 
 - `rea capabilities` 里 `inspect_sqlite_database` 报 `available: false`、
   `availability_code: "unsupported_version"`；
@@ -110,15 +109,25 @@ SQLite 能力要求：Node.js 24.x >= 24.15，或 26+
   "Node.js 24.15 or newer … or a compatible Node.js 26+ runtime"；
 - **其他一切功能照常工作**。
 
-**建议**：新装机器直接用 Node.js 24.15+（或 26+）一次到位。如果你系统 Node
-不能动（例如 24.14 是发行版自带），下载一份独立 Node 24.15+ 解压到任意目录，
-用绝对路径调用（不动系统环境）：
+**建议：直接用 Node.js 24.22.1+ 或 26.12.1+ 一次到位。** 这两个区间同时满足两条约束。
+避开 24.15–24.21 和 26.0–26.11——它们看着像"够新了"，实际装不上。
 
 ```bash
-# <解压的 node 目录> / <npm 全局目录> 换成你的实际路径（Windows 用 \node.exe）
-"<解压的 node 目录>/node" "<npm 全局目录>/node_modules/rea-agents/scripts/rea.mjs" \
-  inspect-sqlite-database <你的.db> --format json
+# 一次验证两条约束
+node --version    # 想要 ^24.22.1 或 >=26.12.1
+
+# 想看当前 Node 到底卡在哪一条
+rea doctor --format json    # SQLite 那项会明说 unsupported_version
 ```
+
+> 如果你系统 Node 不能动（例如 24.14 是发行版自带），下载一份独立 Node 解压到任意目录，
+> 用绝对路径调用（不动系统环境）：
+>
+> ```bash
+> # <解压的 node 目录> / <npm 全局目录> 换成你的实际路径（Windows 用 \node.exe）
+> "<解压的 node 目录>/node" "<npm 全局目录>/node_modules/rea-agents/scripts/rea.mjs" \
+>   inspect-sqlite-database <你的.db> --format json
+> ```
 
 ### 2.3 三平台各自的额外依赖
 
@@ -265,13 +274,13 @@ package version"）。原因：`@latest` 在每次客户端启动时都会解析
      "mcpServers": {
        "rea": {
          "command": "npx",
-         "args": ["-y", "rea-agents@6.5.0", "mcp"]
+         "args": ["-y", "rea-agents@6.8.0", "mcp"]
        }
      }
    }
    ```
 
-   把 `6.5.0` 换成你想要的确切版本（Windows 上需自行包 `cmd.exe /d /c`；
+   把 `6.8.0` 换成你想要的确切版本（Windows 上需自行包 `cmd.exe /d /c`；
    setup 会自动这么做）。需要**回滚**到旧版本时：
 
    ```bash
@@ -297,7 +306,7 @@ rea uninstall --purge-data # 额外清除 REA 的 cache/state（~/.rea 下）
 ### 4.1 验证安装
 
 ```bash
-rea --version    # 应打印 6.5.0（或你安装的版本）
+rea --version    # 应打印 6.8.0（或你安装的版本）
 rea --help       # 列出全部命令
 ```
 
@@ -366,8 +375,8 @@ rea doctor --skill --json                  # 验证已安装的 skill 身份
 
 两个实测确认的坑，不要踩：
 
-- `doctor --provider` 在 **6.5.0 接受** `hopper`、`ghidra`、`ida`、`jadx` 四个 id；
-  **6.8.0 起多了第五个 `kuna`**。传别的（如 `pwntools-elf`）报 `VALIDATION_ERROR` 并列出合法值——
+- `doctor --provider` 在 **6.8.0 接受** `hopper`、`ghidra`、`ida`、`jadx`、`kuna` 五个 id。
+  传别的（如 `pwntools-elf`）报 `VALIDATION_ERROR` 并列出合法值——
   拿不准就故意传一个错值，让它告诉你当前版本接受哪些。
 - `doctor` **不接受 `--dry-run`**——会报 `Unknown flag: --dry-run`。
   `--dry-run` 是 `setup` 的选项。
@@ -450,7 +459,7 @@ healthy: true
 adapter: production-stdio
 server:
   name: rea
-  version: 6.5.0
+  version: 6.8.0
 inventory:
   tools:
     expected: 207
@@ -713,7 +722,7 @@ rea inspect-artifact ./app.asar --json | jq . > inspection.json
 stdio 客户端无法直接启动 npx 的 shim，需要 `cmd.exe /d /c` 包装：
 
 ```powershell
-claude mcp add --scope local rea -- cmd.exe /d /c npx -y rea-agents@6.5.0 mcp
+claude mcp add --scope local rea -- cmd.exe /d /c npx -y rea-agents@6.8.0 mcp
 ```
 
 （macOS/Linux 等价命令去掉 `cmd.exe /d /c` 前缀。）

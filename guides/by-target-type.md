@@ -1,11 +1,11 @@
 <!--
-  基于 REA 6.5.0（npm 包 rea-agents）编写。
+  基于 REA 6.8.0（npm 包 rea-agents）编写。
   事实来源：
     - 官方仓库 morluto/rea 的 docs/（63 份 guide，2026-10 快照）
-    - 本手册作者的真机实测（Windows 10 x64 / Node 24.14.0（另有 24.18.0 独立副本）/ REA 6.5.0，2026-10-15～18）
+    - 本手册作者的真机实测（Windows 10 x64 / Node 24.14.0（另有 24.18.0 独立副本）/ REA 6.8.0，2026-10-25）
     - 三个真实案例：PCL2（.NET）、ChatGPT 桌面版与 OpenCode 桌面版（Electron）
   标注约定：【实测】= 我们在真实目标上跑通过；【官方】= 来自官方文档描述，我们未实测。
-  最后核对日期：2026-10-18。REA 更新很快，行为可能随版本变化；如与官方文档冲突，以官方为准。
+  最后核对日期：2026-10-25。REA 更新很快，行为可能随版本变化；如与官方文档冲突，以官方为准。
 -->
 
 # 按目标类型分析：操作指南
@@ -390,12 +390,15 @@ rea inspect-sqlite-database "<你的数据库>.sqlite" --schema-scope database -
 Node 版本不够时（【实测】的绕过法，不动系统 Node）：
 
 ```bash
-# 下载并解压独立 Node 24.18.0 后，用绝对路径直接调用 rea 的入口脚本
+# 下载并解压一份满足门槛的独立 Node（6.8.0 下要 24.22.1+ 或 26.12.1+），用绝对路径调用
 N24="<你解压的 node 目录>/node.exe"          # POSIX：<解压目录>/bin/node
 REA_JS="<npm 全局目录>/node_modules/rea-agents/scripts/rea.mjs"
 "$N24" "$REA_JS" inspect-sqlite-database "<你的数据库>.sqlite" \
   --table ItemTable --column key --row-limit 15 --format json
 ```
+
+> 选哪个版本要小心：6.8.0 的整体门槛是 `^22.23.4 || ^24.22.1 || >=26.12.1`。
+> 24.15–24.21 和 26.0–26.11 虽然能满足 SQLite，但**装不上 REA**（`EBADENGINE`）。
 
 **返回什么**：所选范围的 schema（表/索引/视图/触发器；虚拟表与影子表会被标记）、`completeness` 与省略的列；行样本——**SQLite 整数以十进制字符串返回**（保住全部 64 位）、实数保持数字（`"Infinity"`/`"-0"` 有显式表示）、文本给解码串 + 原始字节 hex + 数据库编码、blob 是 hex、NULL 是带标签的独立值；数据库与（存在的）`-wal` 各自有 SHA-256 与字节数；SQLite 引擎版本随结果报告。
 
@@ -427,7 +430,7 @@ REA_JS="<npm 全局目录>/node_modules/rea-agents/scripts/rea.mjs"
 **通用流程**（以 Ghidra 为例）：
 
 ```bash
-# 1) 配置与诊断（6.5.0: hopper|ghidra|ida|jadx；6.8.0 起多一个 kuna）
+# 1) 配置与诊断（6.8.0: hopper|ghidra|ida|jadx|kuna 五个 id）
 export GHIDRA_INSTALL_DIR=/absolute/path/to/ghidra_12.1.4_PUBLIC
 export JAVA_HOME=/absolute/path/to/jdk-21        # java/javac 在 PATH 上时可省
 rea doctor --provider ghidra --format json
@@ -617,4 +620,4 @@ rea doctor --target "<你的目标>" --format json     # 附加目标检查（�
 
 **最后看结果而不是只看退出码**：`0` 只说明"操作完成"。静态分析看 `coverage.status`（`complete` / `partial` / `unavailable`）与 `limitations`；原生分析看函数/引用是否被 `resolve`；任何 `unknown_facts` / `unavailable_facts` 都是显式的"不知道"，不是"不存在"。
 
-<!-- 本页为第三方手册内容，非 REA 官方文档。命令行为以 REA 6.5.0 与官方 docs/ 为准。 -->
+<!-- 本页为第三方手册内容，非 REA 官方文档。命令行为以 REA 6.8.0 与官方 docs/ 为准。 -->
