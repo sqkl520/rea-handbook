@@ -1,6 +1,8 @@
 # 逆向学习提示词（可复用模板）
 
 > ⚠️ **仅对你有权分析的目标使用**（你自己的软件、开源项目、你购买并有权分析的产品）。
+> 模板本身**不含**账号登录、授权/付费机制、密钥或隐私数据的分析步骤，也不产出可复现的绕过细节——
+> 这些不在本手册范围内，遇到请跳过。
 >
 > **用法**：复制下面「提示词正文」整段，替换两个占位符，粘贴到任何有文件系统和命令行的 AI 对话框
 > （Claude Code / Codex / Cursor / 其他 agent）。
@@ -23,6 +25,8 @@
 ## 工作原则（重要）
 
 1. **静态优先，不执行目标程序**。除非我明确要求，否则不要运行它、不要加载它的代码。
+   推论：**你看不到实际界面**。关于 UI 的一切只能从 XAML/BAML、样式资源、布局代码推断，
+   结论一律标【推断】，不要写“界面很清爽”这类需要肉眼才能确认的判断。
 2. **每条结论必须标注证据等级**：
    - 【观测】= 我直接看到了（源码、反汇编、字符串原文、文件偏移）
    - 【推断】= 我根据结构/命名/行为推断的
@@ -49,10 +53,22 @@
 
 侦察命令示例（按实际情况选用）：
 ```bash
+# 0. 先确认 REA 本身可用（不要跳过这步）
+rea --version
+rea doctor --format json    # healthy:false 是正常的；看具体哪项可用即可
+#    没有 rea 命令 → 只能用 file / strings / ilspycmd 这类通用工具，
+#    下面的 rea 命令一律跳过，别硬编造输出
+
 # 文件类型
 file <目标>        # 或看文件头前 64 字节
 # .NET 判定：搜 "BSJB" 签名、看是否有 CLI header
 # Electron 判定：看 resources/ 下有没有 app.asar
+```
+
+**规模预判**（决定要不要分 agent、要不要提前收窄输出）：
+
+```bash
+ls -lh <目标>       # > 150 MB 或 > 2000 个类型 → 先 --filter-output，别全量
 ```
 
 **侦察完先向我汇报"这是什么 + 我打算走的路线"，再继续。**
@@ -65,21 +81,23 @@ file <目标>        # 或看文件头前 64 字节
 # 1. 确认身份（版本、框架、依赖、表行数）
 rea inspect-managed-artifact "<目标>" --format json
 
-# 2. ⚠️ 不要直接跑全量成员提取！
-#    对较大程序集会失败：coverage.state = "unavailable"
-#    原因：Managed metadata exceeds the 67108864 byte representation budget
-#    必须改成逐个类型提取：
-rea inspect-managed-members "<目标>" --type <精确类型全名> --format json
-
-# 3. 但你需要先知道类型全名。两条路：
-#    (a) 写脚本直接解析 PE/CLI 元数据表（最可靠，见"复用工具"）
-#    (b) PowerShell 反射（只读元数据，不加载代码）：
-#        [System.Reflection.Assembly]::ReflectionOnlyLoadFrom("路径").GetTypes()
-
-# 4. ★ 全量反编译（最有威力的一步，优先做这个）
+# 2. ★ 先全量反编译（最有威力的一步，能一步拿到源码结构）
 dotnet tool install --global ilspycmd   # 若未安装
 ilspycmd -p -o <输出目录> "<目标>"       # -p = 整个项目，产出可读 C#/VB 源码
 #    注意：反编译出的语言可能与原文不同（VB.NET 会变成 C#），结构仍准确
+#    反编译成功就直接读源码，下面 3-4 步只在拿不到 ilspycmd 时才需要
+
+# 3. 退路 A：REA 的逐类型提取（无反编译条件时用）
+#    ⚠️ 不要直接跑全量成员提取！较大程序集会失败：
+#       coverage.status = "unavailable"
+#       Managed metadata exceeds the 67108864 byte representation budget
+#    必须先知道类型全名，再逐个取：
+rea inspect-managed-members "<目标>" --type <精确类型全名> --format json
+
+# 4. 退路 B：类型全名怎么来（ilspycmd 不可用时）
+#    (a) 写脚本直接解析 PE/CLI 元数据表（最可靠，见"复用工具"）
+#    (b) PowerShell 反射（只读元数据，不加载代码）：
+#        [System.Reflection.Assembly]::ReflectionOnlyLoadFrom("路径").GetTypes()
 
 # 5. WPF 应用的额外一步：BAML → XAML
 #    XAML 编译进程序集后是 BAML 二进制。用 .NET Framework 的
@@ -100,10 +118,13 @@ rea analyze-javascript-application "<asar或目录>" --format json > evidence.js
 #    加参数重跑，并接受"不可信"标记：
 rea analyze-javascript-application "<路径>" --integrity-policy record-and-continue --format json > evidence.json
 
-# 3. ⚠️ Evidence 可能有几百 MB，不要直接读！
-#    投影成摘要：
-node -e "const fs=require('fs');const ev=JSON.parse(fs.readFileSync('evidence.json','utf8'));fs.writeFileSync('view.json',JSON.stringify({source:{kind:'inline',evidence:ev},view:{kind:'summary'}}))"
+# 3. ⚠️ Evidence 可能有几百 MB，不要用 readFileSync 整份读！
+#    Node 单字符串上限 512 MiB，超了直接 ERR_STRING_TOO_LONG。
+#    先用 jq 流式投影，再把小结果交给 REA：
+jq -c '{source:{kind:"inline",evidence:.},view:{kind:"summary"}}' evidence.json > view.json
 rea inspect-analysis-view view.json --format json
+#    更省的做法：分析时就收窄输出，别落地完整 evidence
+#    rea analyze-javascript-application "<路径>" --filter-output '<只保留你要的路径>' --format json
 
 # 4. 想直接看 asar 里的文件（不依赖 REA）：写个 ASAR 头解析脚本
 #    asar 头部是 pickle 格式：
@@ -156,7 +177,7 @@ rea inspect-managed-members "<目标>" --type <某类型> --format json
 ——尤其是那种"按名字猜"的结论。
 
 真实教训：曾按类型名把 `PageLinkMain` 当成"主页"，
-实际它字段是 `NATType`/`InviteCode`——是**联机页**；真正的主页是另一个类型。
+实际它私有字段是 `NATType`/`NetworkSecret`，邀请码由 `GetInviteCode()` 现拼——是**联机页**；真正的主页是另一个类型。
 **名字会骗人，字段和方法不会。**
 
 验证方法：
@@ -250,3 +271,7 @@ rea inspect-managed-members "<目标>" --type <可疑类型> --format json
 **如果分析对象是你有合法授权研究的目标**（自己的程序、开源软件、
 你购买并有权分析的产品），这个流程完全适用。
 动手前请自行确认目标的使用条款。
+
+**卡住了去哪查**：这份模板只给流程，不列症状。遇到报错、结果看不懂、命令没输出，
+查配套手册的 `guides/troubleshooting.md`（14 种症状逐条给解法）；不知道该用哪个命令，
+查 `guides/by-target-type.md`。两者都在 <https://github.com/sqkl520/rea-handbook>。

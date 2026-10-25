@@ -300,8 +300,8 @@ git ls-files 'tools/*.cjs' | wc -l                # → 14 个脚本
 | `docs/` | 3 | 1,043 |
 | `guides/` | 3 | 1,312 |
 | `case-studies/` | 5 | 4,570 |
-| `prompts/` | 3 | 635 |
-| 合计 | 14 | 7,560 |
+| `prompts/` | 3 | 669 |
+| 合计 | 14 | 7,594 |
 
 这 14 个脚本只 `require` Node 内置模块，仓库里没有 `package.json`，也没有 `node_modules`。克隆后直接 `node tools/asar-peek.cjs <app.asar> package.json` 就能跑：
 

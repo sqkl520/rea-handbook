@@ -173,7 +173,7 @@ ilspycmd -p -o "<输出目录>" "<你的程序>.exe"
 
 **返回什么**（【实测】PCL2 `--type PCL.ModBase` 输出结构）：`artifact`（path/sha256/byte_length/format）、`module`、`metadata`（status、table_row_counts）、`identity_scope`（`token_identity: "build-local"`，跨构建匹配需要 artifact SHA-256 + MVID）、`types[]`（token、namespace、name、full_name、extends_token、field_list、method_list）、`fields[]`、`methods[]`（token、declaring_type、name、signature、`body`）、`member_refs[]`、`call_edges[]`、`field_accesses[]`、`user_strings`（`state`、`literals`、`issues`——`ldstr` 的 0x70 token 与解码值）、`selection`（`type_names`、`unmatched_type_names`）、`coverage`（state/issues）、`limitations`。
 
-**实际例子**（【实测】）：PCL2 v2.13.1.1（5.5 MB，WPF + VB.NET）——`inspect-managed-artifact` 得到 643 个类型 / 6,116 方法 / 3,503 字段 / 23 个程序集引用；`inspect-managed-members --type PCL.ModBase` 单独取出 **47 个方法、26 个字段**，`coverage.state: "complete"`、`selection.type_names: ["PCL.ModBase"]`。另一个实测样本 `System.dll`：2,365 个 TypeDef / 18,170 个 MethodDef。`inspect-managed-native-boundaries` 显示 PCL2 只有 8 条模块引用（其中 `user32.dll`/`User32` 是大小写重复；去重 6 个 DLL，没有 winhttp/wininet/ws2_32）→ 网络全走 .NET 托管栈，可据此判断"纯托管应用"。
+**实际例子**（【实测】）：PCL2 v2.13.1.1（5.5 MB，WPF + VB.NET）——`inspect-managed-artifact` 得到 643 个类型 / 6,116 方法 / 3,503 字段 / 23 个程序集引用；`inspect-managed-members --type PCL.ModBase` 单独取出 **47 个方法、26 个字段**，`coverage.status: "complete"`、`selection.type_names: ["PCL.ModBase"]`。另一个实测样本 `System.dll`：2,365 个 TypeDef / 18,170 个 MethodDef。`inspect-managed-native-boundaries` 显示 PCL2 只有 8 条模块引用（其中 `user32.dll`/`User32` 是大小写重复；去重 6 个 DLL，没有 winhttp/wininet/ws2_32）→ 网络全走 .NET 托管栈，可据此判断"纯托管应用"。
 
 **注意事项**：
 
