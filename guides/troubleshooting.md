@@ -102,17 +102,26 @@ rea inspect-sqlite-database db.sqlite --table ItemTable --row-limit 15 --format 
 
 ---
 
-## 症状：`coverage.state = "unavailable"`，元数据超 64 MiB 预算（.NET）
+## 症状：`coverage.state = "partial"`，元数据超 64 MiB 预算（.NET）
 
-**你可能看到**：
+**你可能看到**（6.8.0）：
 
 ```json
-"coverage": {"state": "unavailable", "issues": [{
-  "code": "resource-limit", "scope": "metadata.representation",
+"coverage": {"state": "partial", "issues": [{
+  "code": "resource-limit", "scope": "metadata.representation", "offset": 564775,
   "detail": "Managed metadata exceeds the 67108864 byte representation budget"}]}
 ```
 
+**类型清单是全的，成员是空的。** `metadata.status` 也是 `partial`，
+`limitations` 里写着 "Member decoding exceeded capacity after the type inventory
+was admitted; fields, methods, member references, call edges, field accesses,
+exported types and user strings are not examined to completion."
+
 **注意退出码是 0**——只看退出码会误以为"这个程序集没有成员"。
+
+> **6.5.0 上的表现不同**：那时是 `state: "unavailable"`、`types: 0`——连类型清单都拿不到。
+> 6.8.0 新增了 `ManagedMemberRecovery`，把"整份失败"降级成"清单保留、成员缺失"。
+> 如果你在 6.5.0 上看到 `unavailable`，是版本差异，不是配置问题。
 
 **为什么**：
 
@@ -121,22 +130,18 @@ REA 对 .NET 元数据 / CIL 解码 / 投影有**独立的 64 MiB 表示预算**
 `System.dll` 就会撑爆——它有 **2,365 个 TypeDef、18,170 个方法**，
 全量展开远超 64 MiB（对照：PCL2 那种 643 个类型的小程序集反而更接近边界）。
 
-**[官方已说明]** 官方 `docs/managed-code-analysis.md` 写了这个预算与解法
-（select known declaring types）。**但有一层官方没说**：官方示例直接写
-`--type Example.Parser`，**假设你知道类型的精确全名**——而实战中你往往正是
-为了拿类型名才要跑这次调用。这一步是真正的门槛。
+**[官方已说明]** 官方 `docs/managed-code-analysis.md` 的 Resource admission 一节写明了这个预算，
+并明确它 "not PE format limits"。
 
 **怎么办**：
 
 ```bash
-# ① 先拿类型精确全名（只反射、不执行）
-powershell -Command "[System.Reflection.Assembly]::ReflectionOnlyLoadFrom('C:\path\to\Your.dll').GetTypes() | ForEach-Object { \$_.FullName }"
+# 6.8.0：先全量跑一次，从结果里拿类型清单（成员会是空的，但清单完整）
+rea inspect-managed-members "C:/path/to/Your.dll" --format json \
+  | jq -r '.types[].full_name' > types.txt
 
-# ② 逐个类型提取（coverage 为 complete）
+# 再逐个类型提取（这次 coverage 为 complete，成员齐全）
 rea inspect-managed-members "C:/path/to/Your.dll" --type Your.Full.Type.Name --format json
-
-# ③ 或直接全量反编译（REA 之外的第三方工具）
-ilspycmd -p -o ./decompiled "C:/path/to/Your.dll"
 ```
 
 类型多了就循环：
@@ -146,6 +151,15 @@ for T in $(cat types.txt); do
   rea inspect-managed-members "C:/path/to/Your.dll" --type "$T" --format json \
     > "out/$(echo "$T" | tr '.' '_').json"
 done
+```
+
+**在 6.5.0 上**（拿不到清单时）才需要先靠外部手段取类型名：
+
+```bash
+# 只反射、不执行
+powershell -Command "[System.Reflection.Assembly]::ReflectionOnlyLoadFrom('C:\path\to\Your.dll').GetTypes() | ForEach-Object { \$_.FullName }"
+# 或直接全量反编译（REA 之外的第三方工具）
+ilspycmd -p -o ./decompiled "C:/path/to/Your.dll"
 ```
 
 **能不能预防**：能——**提完检查 `selection.unmatched_type_names`**：
@@ -274,7 +288,7 @@ the feature is absent.`
 **这是本手册最值得记住的一条。** 官方文档列出的合法 seed kind 里包含
 "IPC channel"，但**这个选项在实战中很可能匹配不到任何东西**。
 
-原因（已核验源码并在 6.5.0 实测）：`kind:"channel"` 只匹配**节点身份**
+原因（已核验 6.8.0 源码）：`kind:"channel"` 只匹配**节点身份**
 ——要求图谱里存在 `kind` 恰为 `ipc-channel` 的节点；而你真正要找的通道名
 通常住在某个 `javascript-asset` 节点的
 `observations[].properties.static_analysis.electron.ipc[].channel` 里。
@@ -366,7 +380,7 @@ grep -o '`[a-zA-Z_]*_desktop:[a-zA-Z:-]*`' bootstrap-*.js | sort -u
 实际是选择器没匹配上。
 
 **[官方已说明]** 官方给了过滤示例；**[手册补充]** 从未提
-"字段路径写错时静默返回空"（6.5.0 起未闭合 `[` 会被拒绝，字段名写错仍静默）。
+"字段路径写错时静默返回空"（未闭合 `[` 会被拒绝，字段名写错仍静默）。
 
 **怎么办**：
 
@@ -495,7 +509,7 @@ ReferenceError: require is not defined in ES module scope
 
 **为什么**：
 
-REA 6.5.0 的 `package.json` 有 `"type": "module"`，整个包是 ESM。
+REA 6.8.0 的 `package.json` 有 `"type": "module"`，整个包是 ESM。
 脚本在这棵目录树里用 `require(...)` 写就会撞上。[手册补充] 这是 JS 通识，
 但因为"跟着 REA 的目录结构放脚本"很自然，踩到的人不少。
 

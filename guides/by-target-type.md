@@ -148,7 +148,24 @@ rea inspect-managed-native-boundaries "<你的程序>.exe" --format json
 rea compare-managed-members "<旧版本>.exe" "<新版本>.exe" --format json
 ```
 
-**`--type` 的坑**：全量成员解码有**独立的 64 MiB 表示预算**（不是文件大小上限）。PCL2 只有 5.5 MB，`inspect-managed-members` 全量仍然失败——`coverage.state = "unavailable"`，`issues[0] = {code:"resource-limit", scope:"metadata.representation", detail:"Managed metadata exceeds the 67108864 byte representation budget"}`（【实测】；原始输出未入库——那次的 PCL2 二进制已随自更新漂移，重跑对不上）。官方给的出路是"选已知的声明类型"（`docs/cli.md` 原文：`a declaring type name you already know`——它承认了这个门槛），**但没点破这个循环**（【我们的发现】）：`--type` 要求你知道精确类型全名，而全量失败时 REA 不会给你类型清单，所以第一步的清单得从别处来。拿类型名的可行手段：
+**`--type` 的坑**：全量成员解码有**独立的 64 MiB 表示预算**（不是文件大小上限；官方 `docs/managed-code-analysis.md` 的 Resource admission 一节已明确写出这点）。PCL2 只有 5.5 MB，`inspect-managed-members` 全量仍然超预算——`detail` 里写着超出 `67108864` 字节（【实测】；原始输出未入库——那次的 PCL2 二进制已随自更新漂移，重跑对不上）。
+
+**这个坑在 6.8.0 被上游修了一半**，行为与 6.5.0 不同：
+
+| | 6.5.0 | 6.8.0 |
+| --- | --- | --- |
+| `coverage.state` | `unavailable` | **`partial`** |
+| 类型清单 | **拿不到**（`types: 0`） | **完整保留**（同一个 System.dll 给出全部 2,365 个类型） |
+| 丢的是什么 | 全部 | members / edges / user_strings / exported_types |
+| `issues[0].offset` | `null` | 真实文件偏移 |
+
+机制是 6.8.0 新增的 `ManagedMemberRecovery`：类型清单准入后先预占「部分结果信封」的预算，成员解码超预算时降级为 `partial` 而不是整份失败。
+
+**所以"`--type` 需要类型名、而失败时拿不到类型名"这个死循环，在 6.8.0 上已经不存在了**——
+全量跑一次就能拿到清单（只是成员为空）。6.5.0 时代才需要下面这套绕法。空集合**仍然不等于成员不存在**，
+这条告诫在任何版本都成立。
+
+如果你还在 6.5.0（或需要从别处拿清单），可行手段：
 
 ```powershell
 # Windows PowerShell：不用加载执行，只读反射（实测用于 PCL2）

@@ -109,7 +109,7 @@ npx -y rea-agents <命令>          # ③ 不装：每次一次性运行，机�
 | 第一次装，不知道先跑哪条命令 | [docs/01-getting-started.md §1](docs/01-getting-started.md#1-rea-是什么) | `wc -l < docs/01-getting-started.md` → 757 |
 | 要把 REA 接进你的 AI agent | [docs/02-agent-integration.md §一条命令](docs/02-agent-integration.md#一条命令搞定推荐) | — |
 | 手上有个目标，不知道该用哪个命令 | [guides/by-target-type.md §速查表](guides/by-target-type.md#目标类型速查) | 11 类目标，其中 6 类零依赖 |
-| 命令报错了，或结果看不懂 | [guides/troubleshooting.md §症状](guides/troubleshooting.md#症状error-cannot-create-a-string-longer-than-0x1fffffe8-characters) | 14 种症状，695 行 |
+| 命令报错了，或结果看不懂 | [guides/troubleshooting.md §症状](guides/troubleshooting.md#症状error-cannot-create-a-string-longer-than-0x1fffffe8-characters) | 14 种症状，709 行 |
 | 想看真实产出长什么样 | [case-studies/README.md §案例一](case-studies/README.md#案例一pcl2--从-il-里读出一个启动器的完整架构) | 3 个案例，5.5 / 146 / 567 MB |
 | 想让 AI 替你做分析 | [prompts/README.md §怎么用](prompts/README.md#怎么用) | 2 个文件 / 3 份提示词 |
 | REA 覆盖不到的角度，要自己写解析 | [tools/README.md §脚本清单](tools/README.md#脚本清单) | 15 个脚本，1,311 行 |
@@ -121,7 +121,7 @@ npx -y rea-agents <命令>          # ③ 不装：每次一次性运行，机�
 ```bash
 grep -E '^\| [0-9]+ \|' guides/by-target-type.md | wc -l          # → 11 类目标
 grep -E '^\| [0-9]+ \|' guides/by-target-type.md | grep -c 零依赖  # → 其中 6 类
-wc -l < guides/troubleshooting.md                                  # → 695 行
+wc -l < guides/troubleshooting.md                                  # → 709 行
 git ls-files 'tools/*.cjs' | xargs wc -l | tail -1                  # → 1311 行 / 15 个脚本
 ```
 
@@ -135,18 +135,22 @@ git ls-files 'tools/*.cjs' | xargs wc -l | tail -1                  # → 1311 �
 | --- | --- | --- |
 | 【官方】 | 官方文档与契约写明的 | 9 处 |
 | 【实测】 | 我们在真实目标上跑出来的 | 21 处 |
-| 【我们的发现】 | 官方未展开、或表述分散在各篇的 | 1 处 |
+| 【我们的发现】 | 官方未展开、或表述分散在各篇的 | 0 处（见下） |
 
 ```bash
 # 排除文件头的图例行（第 7 行同时定义了【实测】和【官方】），只数正文里的实例
 grep '【官方】' guides/by-target-type.md | grep -vc '标注约定'      # → 9
 grep '【实测】' guides/by-target-type.md | grep -vc '标注约定'      # → 21
-grep -c "【我们的发现】" guides/by-target-type.md                   # → 1
+grep -c "【我们的发现】" guides/by-target-type.md                   # → 0
 ```
 
 **不数图例，是这类计数最容易错的地方**：直接 `grep -c` 会把定义行也算成一次使用。
 
-关于“【我们的发现】”这一档：初稿标了 3 条，逐条对照 REA 6.5.0 官方 docs 后**撤掉 2 条**。“512 MiB 墙”和“`capabilities` 不完整”官方都写过：前者叫 "Node's single-string limit"，后者在 `docs/cli.md` 里明确指向 server tool list。剩下的这 1 条是：官方给了 `--type` 这条出路，但没说全量失败时你拿不到类型清单，而拿不到清单就填不出 `--type`。
+关于“【我们的发现】”这一档：初稿标了 3 条，逐条对照官方 docs 后撤掉 2 条（“512 MiB 墙”官方叫 "Node's single-string limit"，“`capabilities` 不完整”在 `docs/cli.md` 里明确指向 server tool list）。
+
+**最后 1 条在 6.8.0 也被上游补上了。** 它原本是：官方给了 `--type` 这条出路，但没说全量失败时你拿不到类型清单，而拿不到清单就填不出 `--type`。
+6.8.0 新增了成员恢复机制（`ManagedMemberRecovery`），超预算后**类型清单仍然保留**、`coverage.state` 变成 `partial` 而不是 `unavailable`——出路自己就通了。
+所以这一档现在是 **0 处**。留着这段是因为它记录了一个过程：三条自认的发现，被官方文档和上游修复逐条消化掉了。
 
 **“复算”这个词要说清楚指的是什么**：正文里每个**结构数**（文件数、行数、标注数、症状条数）旁边都有能跑出它的命令；**实测数**（节点数、边数、字节数）来自分析当时的原始输出——其中案例三的那些，原始摘要就在仓库里（[`case-studies/evidence/`](case-studies/evidence/BASELINE.md)，4.8 KB），你可以直接读出来核对。完整图谱（354 MB）不在仓库里，想复现得拿同样的目标重跑。给不出命令的结构数我们不写；实测数一律标出它出自哪一行。
 
@@ -211,11 +215,11 @@ grep -n "枚举全表" case-studies/pcl2.md                 # → 第 1972 行�
 | .NET 表示预算 | 64 MiB（`67108864`） | `inspect-managed-members` 全量提取 | 写了预算、也给了 `--type` 出路，但没说全量失败时你拿不到类型清单（而拿不到清单就填不出 `--type`） |
 | semantic 层节点上限 | 默认 100,000，可调到 1,000,000 | 大图谱的 semantic 层，`status: partial` | 写了默认值与 `--max-semantic-nodes` 的调节范围（1–1,000,000）。但**这是可调默认值，不是硬墙** |
 | 父进程结果容量 | 视目标而定 | 567 MB 归档停在 3,757 / 16,197 个源文件 | 写了资源耗尽时不终止进程、已完成事实保留、`partial coverage`；但没给“这个体量大概停在哪”的量级预期 |
-| 退出码语义 | 0 | 64 MiB 预算失败时退出码仍是 0，`coverage.state = "unavailable"` | 有退出码表，也提过 "result may include partial evidence"。但两句话隔着好几页 |
+| 退出码语义 | 0 | 64 MiB 预算失败时退出码仍是 0，`coverage.state = "partial"`（6.8.0；6.5.0 是 `unavailable`） | 有退出码表，也提过 "result may include partial evidence"。但两句话隔着好几页 |
 
-64 MiB 那条值得单说：文件只有 5.5 MB，全量成员提取照样失败。`coverage.state = "unavailable"`，`detail` 里写着超出 `67108864` 字节。这 64 MiB 不是文件大小上限，是一条独立的表示预算。反向反例也测过：3.4 MB 的 `System.dll`（`Microsoft.NET/Framework64/v4.0.30319`，sha256 `4ad37405…`）同样撑爆它。
+64 MiB 那条值得单说：文件只有 5.5 MB，全量成员提取照样超预算。6.8.0 下 `coverage.state = "partial"`——类型清单保留、成员为空（6.5.0 时代是 `unavailable`，连清单都没有）。`detail` 里写着超出 `67108864` 字节。这 64 MiB 不是文件大小上限，是一条独立的表示预算。反向反例也测过：3.4 MB 的 `System.dll`（`Microsoft.NET/Framework64/v4.0.30319`，sha256 `4ad37405…`）同样撑爆它。
 
-复算：`grep -n "67108864" guides/by-target-type.md` → 第 151 行；`grep -n "67108864" guides/troubleshooting.md` → 112 与 120 行。
+复算：`grep -n "67108864" guides/by-target-type.md` → 第 151 行；`grep -n "67108864" guides/troubleshooting.md` → 112 与 129 行。
 
 表里剩下三个数同样在仓库内可点：
 
@@ -306,10 +310,10 @@ git ls-files 'tools/*.cjs' | wc -l                # → 15 个脚本
 | 目录 | 文件数 | 行数 |
 | --- | --- | --- |
 | `docs/` | 3 | 1,095 |
-| `guides/` | 3 | 1,336 |
+| `guides/` | 3 | 1,367 |
 | `case-studies/` | 5 | 4,638 |
 | `prompts/` | 3 | 669 |
-| 合计 | 14 | 7,738 |
+| 合计 | 14 | 7,769 |
 
 这 15 个脚本只 `require` Node 内置模块，仓库里没有 `package.json`，也没有 `node_modules`。克隆后直接 `node tools/asar-peek.cjs <app.asar> package.json` 就能跑：
 
