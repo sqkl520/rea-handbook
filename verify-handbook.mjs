@@ -80,12 +80,22 @@ if (linkProblems === 0) ok(`${linkCount} 个内部链接全部有效`);
 console.log('\n【2】合规扫描');
 const forbidden = [
   ['5Zyf6LGG56CB', '授权机制分析'],
-  ['UlVOVE1TQUFB', '密钥字面值'],
+  ['UlVOVE1TQQ==', '密钥字面值'],              // 前缀匹配：允许列出字段名，不允许出现完整值
   ['ZmU3MmVkYzI=', 'OAuth ClientId'],
   ['YWkuZnVycnk=', '私有端点'],
   ['VXNlcnNcQWRtaW5pc3RyYXRvcg==', '本机用户名'],
   ['RDpcUHJvamVjdHM=', '本机路径'],
   ['RG9uYXRpb25SYW5r', '赞助档位'],
+  ['R2VuZXJhdGVQb3RhdG9Db2Rl', '赞助码生成函数'],
+  ['UG90YXRvRmVhdHVyZXM=', '赞助功能枚举'],
+  ['Q2hlY2tQb3RhdG9Db2Rl', '赞助码校验函数'],
+  ['SW5wdXRQb3RhdG9Db2Rl', '赞助码输入函数'],
+  ['54ix5Y+R55S1', '赞助平台名'],
+  ['YWZkaWFu', '赞助平台域名'],
+  ['QlVHTEVER0VS', '另一项目内部标识'],
+  ['QURNSU5JfjE=', '8.3 短名'],
+  ['cGNsLXJlbW90ZS0=', '遥测 topic 前缀'],
+  ['YXAtc2hhbmdoYWkuY2xzLnRlbmNlbnRjcy5jb20=', '遥测端点'],
 ];
 let found = 0;
 for (const f of files) {

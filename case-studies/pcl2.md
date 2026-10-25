@@ -2608,7 +2608,7 @@ ModSecret.VersionBranchMain = "Official"
 ModSecret.RegFolder       = "PCL"
 
 // ★ 埋点（腾讯云 CLS，不是第三方分析）
-ModSecret.ClsBaseUrl = "https://ap-shanghai.cls.tencentcs.com/track?topic_id=pcl-remote-1253424809"
+ModSecret.ClsBaseUrl = "https://{region}.cls.tencentcs.com/track?topic_id=<APPID>"   // 发布版填的是具体区域与 APPID，此处脱敏
 
 // 虚拟化与分页
 ResourceSearcher.RESULT_PAGE_SIZE = 40

@@ -13,7 +13,8 @@
 <sub>非官方第三方手册 · 基于 REA 6.5.0 写出 · 三平台覆盖不均（详见「这本手册会过期」）</sub>
 
 REA 是一个本地跑的逆向工程工具：一个 CLI 加一个 MCP server，把“读二进制、读打包产物”
-变成结构化证据喂给 AI agent。它不执行目标程序，静态读完，给你一张带出处的图。
+变成结构化证据喂给 AI agent。默认是静态的——读完就给你一张带出处的图，不运行目标；
+少数工作流例外（运行时观察、CDP attach 到已开的浏览器），见 `guides/by-target-type.md`。
 
 这是它读一个 Electron 应用主程序的真实输出（231 MB 的 `OpenCode.exe`，9 个安全开关，一次调用；本机实测 7–9 秒）。看 `fuses[9]` 那几行：`raw_byte` 49 表示开、48 表示关；`complete: true` 表示一次读完，不用二次调用。
 
@@ -359,6 +360,7 @@ git ls-files docs guides case-studies prompts | xargs cat | wc -l    # 正文体
 ## License
 
 - **本仓库**（手册、提示词、脚本、案例研究）：[MIT](LICENSE) © REA Handbook contributors。
+  （案例研究中引用的代码片段版权归各软件原作者，不在本仓库的 MIT 范围内。）
 - **REA**：是 [morluto/rea](https://github.com/morluto/rea) 的 MIT 项目（Copyright (c) morluto）。本手册引用其公开文档与行为描述，遵循其 MIT 许可。
 
 MIT：随便用，随便改。本仓库的 MIT 许可不涵盖任何商标的使用。
