@@ -79,9 +79,14 @@ console.log('streams:', Object.keys(streams).join(', '));
 const strHeap = streams['#Strings'];
 const blobHeap = streams['#Blob'];
 const readStr = (idx) => {
-  let q = strHeap.off + idx;
+  const base = strHeap.off + idx;
+  // 越界时必须停：buf[q] 在越界后是 undefined，而 undefined !== 0 恒为真，
+  // 不加边界检查会一直追加 U+0000 直到堆内存耗尽（System.dll 上实测 OOM）。
+  const limit = strHeap.off + strHeap.size;
+  let q = base;
   let s = '';
-  while (buf[q] !== 0) s += String.fromCharCode(buf[q++]);
+  while (q < limit && buf[q] !== 0) s += String.fromCharCode(buf[q++]);
+  if (q >= limit) throw new Error(`#Strings 越界：idx=${idx}（堆大小 ${strHeap.size}）`);
   return s;
 };
 
@@ -109,15 +114,21 @@ const strIdx = (heapSizes & 1) ? 4 : 2;
 const guidIdx = (heapSizes & 2) ? 4 : 2;
 const blobIdx = (heapSizes & 4) ? 4 : 2;
 const tblIdx = (t) => (rows[t] >= 65536 ? 4 : 2);
-const codedIdx = (tables) => {
+// coded index 的 tag 位数由"编码槽位数"决定，不是"实际成员数"。
+// 不能只传出现的成员名：CustomAttributeType 有 5 个槽（3 个未使用），tag 占 3 位，
+// 阈值是 2^13=8192；若按 2 个成员算成 1 位，阈值变 2^15，MethodDef 18170 会被误判成 2 字节，
+// CustomAttribute 每行少算 2 字节 —— System.dll 上 4992 行 → 9984 字节错位，
+// 其后所有表全错，AssemblyRef 读到垃圾索引（实测 OOM/越界）。
+// 故第二个参数显式给槽位总数。
+const codedIdx = (tables, slots) => {
   let max = 0;
   for (const t of tables) max = Math.max(max, rows[t] || 0);
-  const bits = Math.ceil(Math.log2(tables.length));
+  const bits = Math.ceil(Math.log2(slots ?? tables.length));
   return max < (1 << (16 - bits)) ? 2 : 4;
 };
-const TypeDefOrRef = codedIdx(['TypeDef','TypeRef','TypeSpec']);
-const ResolutionScope = codedIdx(['Module','ModuleRef','AssemblyRef','TypeRef']);
-const MemberRefParent = codedIdx(['TypeDef','TypeRef','ModuleRef','MethodDef','TypeSpec']);
+const TypeDefOrRef = codedIdx(['TypeDef','TypeRef','TypeSpec'], 3);
+const ResolutionScope = codedIdx(['Module','ModuleRef','AssemblyRef','TypeRef'], 4);
+const MemberRefParent = codedIdx(['TypeDef','TypeRef','ModuleRef','MethodDef','TypeSpec'], 5);
 
 // skip preceding tables in fixed order to reach a target table
 const ORDER = TABLES.filter((t) => rows[t] !== undefined);
@@ -130,10 +141,13 @@ const rowSize = {
   Param: 2 + 2 + strIdx,
   InterfaceImpl: tblIdx('TypeDef') + TypeDefOrRef,
   MemberRef: MemberRefParent + strIdx + blobIdx,
-  Constant: 2 + codedIdx(['Field','Param','Property']) + blobIdx,
-  CustomAttribute: codedIdx(['MethodDef','MemberRef']) + codedIdx(['TypeDef','TypeRef','Module','MethodDef','Param','Field','Property','Event','Assembly']) + blobIdx,
-  FieldMarshal: codedIdx(['Field','Param']) + blobIdx,
-  DeclSecurity: 2 + codedIdx(['TypeDef','MethodDef','Assembly']) + blobIdx,
+  Constant: 2 + codedIdx(['Field','Param','Property'], 3) + blobIdx,
+  // Parent = HasCustomAttribute（22 种，tag 5 位）；Type = CustomAttributeType（5 槽，tag 3 位）
+  CustomAttribute:
+    codedIdx(['MethodDef','Field','TypeRef','TypeDef','Param','InterfaceImpl','MemberRef','Module','DeclSecurity','Property','Event','StandAloneSig','ModuleRef','TypeSpec','Assembly','AssemblyRef','File','ExportedType','ManifestResource','GenericParam','GenericParamConstraint','MethodSpec'], 22) +
+    codedIdx(['MethodDef','MemberRef'], 5) + blobIdx,
+  FieldMarshal: codedIdx(['Field','Param'], 2) + blobIdx,
+  DeclSecurity: 2 + codedIdx(['TypeDef','MethodDef','Assembly'], 3) + blobIdx,
   ClassLayout: 2 + 4 + tblIdx('TypeDef'),
   FieldLayout: 4 + tblIdx('Field'),
   StandAloneSig: blobIdx,
@@ -141,20 +155,20 @@ const rowSize = {
   Event: 2 + strIdx + TypeDefOrRef,
   PropertyMap: tblIdx('TypeDef') + tblIdx('Property'),
   Property: 2 + strIdx + blobIdx,
-  MethodSemantics: 2 + tblIdx('MethodDef') + codedIdx(['Event','Property']),
-  MethodImpl: tblIdx('TypeDef') + codedIdx(['MethodDef','MemberRef']) + codedIdx(['MethodDef','MemberRef']),
+  MethodSemantics: 2 + tblIdx('MethodDef') + codedIdx(['Event','Property'], 2),
+  MethodImpl: tblIdx('TypeDef') + codedIdx(['MethodDef','MemberRef'], 2) * 2,
   ModuleRef: strIdx,
   TypeSpec: blobIdx,
-  ImplMap: 2 + codedIdx(['Field','MethodDef']) + strIdx + tblIdx('ModuleRef'),
+  ImplMap: 2 + codedIdx(['Field','MethodDef'], 2) + strIdx + tblIdx('ModuleRef'),
   FieldRVA: 4 + tblIdx('Field'),
   Assembly: 4 + 2 + 2 + 2 + 2 + 4 + blobIdx + strIdx + strIdx,
   AssemblyRef: 2 + 2 + 2 + 2 + 4 + blobIdx + strIdx + strIdx + blobIdx,
   File: 4 + strIdx + blobIdx,
-  ExportedType: 4 + 4 + strIdx + strIdx + codedIdx(['File','ExportedType','Assembly']),
-  ManifestResource: 4 + 4 + strIdx + codedIdx(['File','AssemblyRef','ExportedType']),
+  ExportedType: 4 + 4 + strIdx + strIdx + codedIdx(['File','ExportedType','Assembly'], 3),
+  ManifestResource: 4 + 4 + strIdx + codedIdx(['File','AssemblyRef','ExportedType'], 3),
   NestedClass: tblIdx('TypeDef') * 2,
-  GenericParam: 2 + 2 + codedIdx(['TypeDef','MethodDef']) + strIdx,
-  MethodSpec: codedIdx(['MethodDef','MemberRef']) + blobIdx,
+  GenericParam: 2 + 2 + codedIdx(['TypeDef','MethodDef'], 2) + strIdx,
+  MethodSpec: codedIdx(['MethodDef','MemberRef'], 2) + blobIdx,
   GenericParamConstraint: tblIdx('GenericParam') + TypeDefOrRef,
 };
 
