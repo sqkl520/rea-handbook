@@ -1,0 +1,50 @@
+name: verify
+
+# 仓库内部自洽检查。纯离线，几秒跑完，push / PR 都跑。
+# 对 REA 上游的核对在另一个 workflow（surface.yml），按周跑，因为它要联网拉 npm 包。
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  handbook:
+    name: verify-handbook（Node ${{ matrix.node }}）
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 对应 REA 的 engines 三段：22.x / 24.x / 26.x
+        # 检查器本身必须在这三种运行时下都能跑，否则读者用哪个版本 clone 都可能失败
+        node: ['22', '24', '26']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Node 版本
+        run: node --version
+      - name: 校验
+        run: node verify-handbook.mjs
+
+  # 单独跑一次语法检查：tools/ 下的脚本不在上面的检查范围内
+  tools-syntax:
+    name: tools 语法检查
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: node -c 全部脚本
+        run: |
+          fail=0
+          for f in tools/*.cjs verify-handbook.mjs verify-rea-surface.mjs; do
+            if ! node --check "$f"; then
+              echo "::error file=$f::语法错误"
+              fail=1
+            fi
+          done
+          exit $fail

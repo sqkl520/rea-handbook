@@ -1,0 +1,76 @@
+name: surface
+
+# 对 REA 上游核对：命令名、doctor provider id、Node 版本区间是否还成立。
+#
+# 为什么单独一个 workflow：它要联网 `npm pack rea-agents@latest`，
+# 失败原因可能是网络而不是文档错。所以：
+#   · 不阻塞 push（只在 schedule / 手动触发时跑）
+#   · 失败时开一个 issue，而不是让 CI 变红后无人处理
+#
+# 这也解决了本轮发现的结构性问题：手册曾经落后上游 3 个版本而无人察觉。
+
+on:
+  schedule:
+    # 每周一 09:07 UTC（避开整点，减少与其它任务叠加）
+    - cron: '7 9 * * 1'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '要对照的 rea-agents 版本（默认 latest）'
+        required: false
+        default: 'latest'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  surface:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: 对照上游
+        id: check
+        continue-on-error: true
+        run: node verify-rea-surface.mjs --version "${{ inputs.version || 'latest' }}"
+
+      - name: 失败时开 issue
+        if: steps.check.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = '上游 REA 有变化，手册需要更新';
+            const { data: existing } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'surface-drift',
+            });
+            const body = [
+              '`node verify-rea-surface.mjs` 对上游最新版跑出不一致。',
+              '',
+              '常见原因：命令被改名或删除、`doctor --provider` 的 id 列表变了、Node 版本区间抬高了。',
+              '',
+              '查看完整输出：Actions → surface → 最近一次运行。',
+              '',
+              '修完之后手动触发一次本 workflow 确认恢复。',
+            ].join('\n');
+            if (existing.length) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: existing[0].number, body: '再次检测到漂移（' + new Date().toISOString() + '）。',
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner, repo: context.repo.repo,
+                title, body, labels: ['surface-drift'],
+              });
+            }
+
+      - name: 把检查结果传给 job 状态
+        if: steps.check.outcome == 'failure'
+        run: exit 1

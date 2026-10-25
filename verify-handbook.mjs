@@ -652,5 +652,64 @@ console.log('\n【9】README 自述统计');
   if (!bad) ok(`${claims.length} 条 README 自述统计与实际一致`);
 }
 
+// ── 10. 复算命令实执行 ──
+// 第 9 项是"认得出的写法逐个匹配"。README 里一共 9 种写法，它只覆盖 5 种，
+// 剩下 4 种从未被检查——已经因此漏检 4 次（tools 行数 1146、最长脚本 261、
+// docs/01 行数 719、脚本行数 1261）。
+// 这一项兜底：把「命令 # → N」原样跑一遍，比对输出。
+// 只读白名单 + 5 秒超时；不在白名单或执行失败都记为"跳过"，不判失败。
+console.log('\n【10】复算命令实执行');
+{
+  const ALLOWED = [/^grep\s/, /^wc\s/, /^git\s+ls-files\b/, /^node\s+tools\//, /^find\s/];
+  const FORBIDDEN = [/\brm\b/, /\bmv\b/, /\bcp\b/, />/, /\bcurl\b/, /\bwget\b/, /npm\s+i/, /\bnpx\b/, /\bsudo\b/];
+  const readme10 = readFileSync(join(ROOT, 'README.md'), 'utf8');
+  let ran = 0;
+  let skipped = 0;
+  let bad = 0;
+  for (const line of readme10.split('\n')) {
+    const m = /^([a-z][^\n#]*?)\s*#\s*→\s*([\d,]+)/.exec(line.trim());
+    if (!m) continue;
+    const cmd = m[1].trim();
+    const expected = Number(m[2].replace(/,/g, ''));
+    if (FORBIDDEN.some((re) => re.test(cmd)) || !ALLOWED.some((re) => re.test(cmd))) {
+      skipped++;
+      continue;
+    }
+    let out;
+    try {
+      out = execFileSync('bash', ['-c', cmd], {
+        cwd: ROOT,
+        encoding: 'utf8',
+        timeout: 5000,
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+    } catch {
+      skipped++;   // 环境差异（缺 bash / 命令不存在）不算失败
+      continue;
+    }
+    // 两种输出形态：
+    //  · 单个数字（wc -l / grep -c 的输出）
+    //  · 多行 "文件:行号:内容"（grep -n / grep -rn 的输出）——这时期望值是"行数"
+    // 早先一律取首个数字，会把文件名里的 01 当成行数，误报。
+    const lines = out.trim().split('\n').filter(Boolean);
+    let actual;
+    if (lines.length === 1 && /^\s*-?[\d,]+\s*$/.test(lines[0])) {
+      actual = Number(lines[0].replace(/,/g, ''));
+    } else if (lines.length >= 1 && /^[^:]+:\d+:/.test(lines[0])) {
+      actual = lines.length;          // grep -n / -rn：期望的是命中行数
+    } else {
+      const got = out.match(/\d[\d,]*/);
+      if (!got) { skipped++; continue; }
+      actual = Number(got[0].replace(/,/g, ''));
+    }
+    ran++;
+    if (actual !== expected) {
+      warn(`README 里的 "${cmd}" 输出 ${actual}，但写着 ${expected}`);
+      bad++;
+    }
+  }
+  if (!bad) ok(`${ran} 条复算命令实跑一致（${skipped} 条不在白名单或无法执行，跳过）`);
+}
+
 console.log(`\n${problems === 0 ? '✅ 全部通过' : `⚠️  发现 ${problems} 个问题`}\n`);
 process.exit(problems === 0 ? 0 : 1);

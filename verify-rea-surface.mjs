@@ -43,7 +43,10 @@ function loadFromPackageDir(dir) {
   const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
   const namesPath = join(dir, 'dist/cliCommandNames.js');
   const catalogPath = join(dir, 'dist/mcp-catalog-full.json');
-  if (!existsSync(namesPath) || !existsSync(catalogPath)) return null;
+  // 命令清单是硬性要求；catalog 不是。
+  // mcp-catalog-full.json 是 6.8.0 才引入的，6.5.0 的包里没有——
+  // 早先把它写成硬性前提，导致这个检查器对 6.5.0 基线完全跑不了。
+  if (!existsSync(namesPath)) return null;
 
   // cliCommandNames.js 是 ESM：
   //   export const CLI_COMMANDS = Object.freeze({ camelName: "kebab-name", ... })
@@ -55,8 +58,12 @@ function loadFromPackageDir(dir) {
   const commands = [...body[1].matchAll(/:\s*"([^"]+)"/g)].map((x) => x[1]);
   if (!commands.length) return null;
 
-  const catalog = JSON.parse(readFileSync(catalogPath, 'utf8'));
-  const tools = (catalog.tools || []).map((t) => t.name);
+  // catalog 存在就用（6.8.0+ 能拿到 MCP 工具名）；不存在就跳过，命令名照样能查
+  let tools = [];
+  if (existsSync(catalogPath)) {
+    const catalog = JSON.parse(readFileSync(catalogPath, 'utf8'));
+    tools = (catalog.tools || []).map((t) => t.name);
+  }
 
   const testsPath = join(dir, 'dist/application/DoctorProviderIds.js');
   let providers = [];
@@ -118,7 +125,11 @@ if (!surface) {
   process.exit(2);
 }
 info(`对照版本：REA ${surface.version}`);
-info(`清单：${surface.commands.length} 个 CLI 命令 / ${surface.tools.length} 个 MCP 工具 / ${surface.providers.length} 个 doctor provider`);
+info(
+  `清单：${surface.commands.length} 个 CLI 命令 / ` +
+    (surface.tools.length ? `${surface.tools.length} 个 MCP 工具` : '无 MCP 工具清单（该版本包内没有 catalog）') +
+    ` / ${surface.providers.length} 个 doctor provider`
+);
 
 // ── 2. 收集仓库里出现的命令与旗标 ──
 const TEXT_EXT = /\.(md|mjs|cjs)$/;

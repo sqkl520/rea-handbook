@@ -221,7 +221,7 @@ grep -n "枚举全表" case-studies/pcl2.md                 # → 第 1972 行�
 
 ```bash
 grep -n "100,000 节点" case-studies/README.md        # → 42 与 221 行（semantic 上限）
-grep -n "3,757" case-studies/README.md                # → 139 行（567 MB 停在哪）
+grep -n "3,757" case-studies/README.md                # → 148 行（567 MB 停在哪）
 grep -n "570,218,269" guides/troubleshooting.md       # → 46 行（整份读入必崩的那个体量）
 ```
 
