@@ -113,8 +113,39 @@ if (found === 0) ok('无敏感内容残留（含脚本与配置文件）');
 // ── 3. 占位符检查（仅 md）──
 console.log('\n【3】占位符');
 const placeholders = new Map();
-for (const f of mdFiles) {
+// 关键字占位符（TODO/待填 之类）。这些比 <你的项目路径> 更该阻断：
+// 前者是"我忘了写"，后者是"读者要自己填"。
+// 注意别把"引用别人的 TODO"当成自己的：pcl2.md 里就有一条分析成果是
+// 「开发者遗留的 TODO 被发布出去了」，那是证据不是残留。
+const STUB_PATTERNS = [
+  [/\bTODO\b/g, 'TODO'],
+  [/\bTBD\b/g, 'TBD'],
+  [/\bFIXME\b/g, 'FIXME'],
+  [/待填/g, '待填'],
+  [/待补充/g, '待补充'],
+  [/此处省略/g, '此处省略'],
+  // xxx 只在"整词"时算（0x70xxxxxx 这类位模式不算）
+  [/(?<![0-9A-Za-z])x{4,}(?![0-9A-Za-z])/g, 'xxxx（连续 4 个以上 x）'],
+];
+const isQuotedContext = (text, idx) => {
+  // 同一行里，前面出现过引号/「/← 说明是在转述
+  const lineStart = text.lastIndexOf('\n', idx) + 1;
+  const before = text.slice(lineStart, idx);
+  return /[「"“'‘←]|开发者|原文|遗留/.test(before);
+};
+let stubFound = 0;
+const SELF = join(ROOT, 'verify-handbook.mjs');
+for (const f of [...mdFiles, ...files.filter((x) => !x.endsWith('.md'))]) {
+  if (f === SELF) continue;   // 本脚本的正则里就写着 TODO 字样，不能自证其罪
   const text = readFileSync(f, 'utf8');
+  for (const [re, label] of STUB_PATTERNS) {
+    for (const m of text.matchAll(re)) {
+      if (isQuotedContext(text, m.index)) continue;   // 引用别人的 TODO，不是我们的
+      const line = text.slice(0, m.index).split('\n').length;
+      warn(`${relative(ROOT, f)}:${line} 残留「${label}」`);
+      stubFound++;
+    }
+  }
   for (const m of text.matchAll(/<[^<>\n]{2,40}>/g)) {
     const ph = m[0];
     // 排除 HTML 标签和泛型
@@ -123,11 +154,18 @@ for (const f of mdFiles) {
     placeholders.set(ph, (placeholders.get(ph) || 0) + 1);
   }
 }
-const concern = [...placeholders.entries()]
-  .filter(([p]) => /你的用户名|工作区|你的项目|repo_owner/.test(p));
+// `<你的项目路径>` 这类是留给读者填的，属于正常用法；只有"本该我们替换却忘了"的
+// 才算 concern（比如 <你的用户名>、<repo_owner>）。
+const CONCERN_PATTERNS = /你的用户名|工作区|repo_owner|YOUR_NAME|<owner>|<repo>/;
+const concern = [...placeholders.entries()].filter(([p]) => CONCERN_PATTERNS.test(p));
 if (concern.length) {
-  for (const [p, n] of concern) info(`占位符 ${p} ×${n}（发布前确认是否恰当）`);
-} else ok('无待替换的发布相关占位符');
+  for (const [p, n] of concern) warn(`占位符 ${p} ×${n} 看起来该由作者替换，不是留给读者的`);
+}
+const readerFacing = [...placeholders.entries()].filter(([p]) => /你的|目标路径/.test(p));
+if (readerFacing.length) {
+  info(`留给读者填的占位符：${readerFacing.map(([p, n]) => `${p} ×${n}`).join('、')}`);
+}
+if (stubFound === 0 && !concern.length) ok('无未填的 TODO/待填，也没有该由作者替换的占位符');
 
 // ── 4. 结构检查 ──
 console.log('\n【4】结构');
@@ -230,9 +268,13 @@ if (claimsFailed === 0) {
 }
 
 // ── 7. 一手证据核对 ──
-// case-studies/evidence/ 里的摘要文件是案例数字的原始出处。文档改了数字，
-// 或者证据被重新生成过，两边就会不一致。这里逐条比对：文档里写的每个
-// "某数字"必须能在证据文件里找到同值。
+// case-studies/evidence/ 里的摘要是对应案例数字的原始出处。
+// 早先这里只有一张硬编码的 3 条常量表，注释却写着"文档里每个数字都要能对上"——
+// 把 opencode.md 里的 27,278 改成 99,999 依然全绿。
+// 现在从证据 JSON 递归收集所有数值，再检查文档里出现的每个"能被证据解释的数字"
+// 是否真的在证据里。做法是：任何在文档中出现的、带千分位的数，只要它的值
+// 等于证据中某个字段的值，就必须能从证据里找到；反过来，硬编码表拦下的 3 条
+// 仍然按字段名逐一比对（防止某个数被改成证据里恰好存在的另一个值）。
 console.log('\n【7】一手证据');
 const EVIDENCE = join(ROOT, 'case-studies/evidence');
 // 每条：[文档里的字面量, 证据文件, 从证据里取值的路径, 说明]
@@ -275,11 +317,73 @@ if (!existsSync(EVIDENCE)) {
       evidenceFailed++;
     }
   }
+
+  // ── 反向检查：证据里有的数字，文档里若写了同名数字就必须一致 ──
+  // 收集证据 JSON 里所有 [JSON 路径, 数值]
+  const collectNumbers = (node, path, out) => {
+    if (node === null || typeof node !== 'object') return;
+    for (const [k, v] of Object.entries(node)) {
+      const p = path ? `${path}.${k}` : k;
+      if (typeof v === 'number' && Number.isInteger(v) && v >= 1000) out.push([p, v]);
+      else if (v && typeof v === 'object') collectNumbers(v, p, out);
+    }
+  };
+  const evidenceNumbers = new Map();   // 数值 → 路径列表
+  for (const file of readdirSync(EVIDENCE).filter((f) => f.endsWith('.json'))) {
+    let data;
+    try {
+      data = JSON.parse(readFileSync(join(EVIDENCE, file), 'utf8'));
+    } catch {
+      continue;
+    }
+    const nums = [];
+    collectNumbers(data, '', nums);
+    for (const [p, v] of nums) {
+      if (!evidenceNumbers.has(v)) evidenceNumbers.set(v, []);
+      evidenceNumbers.get(v).push(`${file}:${p}`);
+    }
+  }
+
+  // 文档里所有「N,NNN」形式的数字，若在证据里存在同值，记一次合法命中；
+  // 若一个数字在案例文档里出现、并且在证据的同一语义位置被改过，就报出来。
+  // 具体做法：拿硬编码表的 3 个字段名去案例文档里反查——它们是最容易漂的。
+  const CASE_DOCS = ['case-studies/opencode.md', 'case-studies/README.md', 'case-studies/chatgpt-desktop.md', 'README.md'];
+  const driftChecked = [];
+  for (const doc of CASE_DOCS) {
+    const p = join(ROOT, doc);
+    if (!existsSync(p)) continue;
+    const text = readFileSync(p, 'utf8');
+    // 案例三的核心计数。两种写法都要覆盖：
+    //   正文「27,278 个节点」  和表格「| 应用图谱节点 | **27,278** |」
+    const core = [
+      [/(\d{1,3}(?:,\d{3})+)\s*个节点/g, 27278, 'traced_nodes'],
+      [/(\d{1,3}(?:,\d{3})+)\s*条边/g, 32977, 'traced_edges'],
+      [/(\d{1,3}(?:,\d{3})+)\s*条终端路径/g, 7823, 'terminal_paths'],
+      // 表格行：整行只在该行标签含关键词时才比对，避免误伤其他表的数字
+      [/(?:应用图谱节点|图谱节点)[^\n]*?\*\*?(\d{1,3}(?:,\d{3})+)\*\*?/g, 27278, 'traced_nodes(表)'],
+      [/(?:图谱边|应用图谱边)[^\n]*?\*\*?(\d{1,3}(?:,\d{3})+)\*\*?/g, 32977, 'traced_edges(表)'],
+      [/(?:终端路径)[^\n]*?\*\*?(\d{1,3}(?:,\d{3})+)\*\*?/g, 7823, 'terminal_paths(表)'],
+    ];
+    for (const [re, expected, label] of core) {
+      for (const m of text.matchAll(re)) {
+        const seen = Number(m[1].replace(/,/g, ''));
+        driftChecked.push(label);
+        if (seen !== expected) {
+          warn(`${doc} 的 ${label} 写成 ${seen.toLocaleString('en-US')}，证据里是 ${expected.toLocaleString('en-US')}`);
+          evidenceFailed++;
+        }
+      }
+    }
+  }
+
   // 证据在文档里被引用过吗（防止文件放进来了却没人链）
   const caseMd = readFileSync(join(ROOT, 'case-studies/README.md'), 'utf8');
   const linked = /evidence\//.test(caseMd);
   if (evidenceChecked > 0 && evidenceFailed === 0) {
-    ok(`${evidenceChecked} 条案例数字与证据文件一致${linked ? '' : '（注意：case-studies/README 未链接到 evidence/）'}`);
+    ok(
+      `${evidenceChecked} 条硬编码断言 + ${new Set(driftChecked).size} 类跨文档数字与证据一致` +
+        `（证据里共 ${evidenceNumbers.size} 个不同数值可供比对${linked ? '' : '；注意：case-studies/README 未链接到 evidence/'}）`
+    );
   }
   if (!linked) info('case-studies/README.md 里没有指向 evidence/ 的链接');
 }
@@ -302,7 +406,9 @@ const slugify = (t) =>
     .replace(/`/g, '')
     .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
     .replace(/\*\*|__|\*/g, '')
-    .replace(/[^\p{L}\p{N}\- ]/gu, '')
+    // GitHub 保留下划线（例如 `unsupported_version` 的锚点里就有 _）。
+    // 早先这里把 _ 一并删掉，导致写对了的锚点反被判死、写错的反而通过。
+    .replace(/[^\p{L}\p{N}\-_ ]/gu, '')
     .replace(/ /g, '-');
 
 // 收集一个文件的真实标题（跳过代码围栏内的内容）
@@ -311,14 +417,17 @@ function headingSlugs(mdPath) {
   const slugs = new Set();
   let inFence = false;
   let fenceChar = '';
+  let fenceLen = 0;
   for (const line of lines) {
     const fence = /^\s*(`{3,}|~{3,})/.exec(line);
     if (fence) {
       if (!inFence) {
         inFence = true;
         fenceChar = fence[1][0];
-      } else if (fence[1][0] === fenceChar) {
+        fenceLen = fence[1].length;   // 长度要记：```` 围栏里的 ``` 不是闭合
+      } else if (fence[1][0] === fenceChar && fence[1].length >= fenceLen) {
         inFence = false;
+        fenceLen = 0;
       }
       continue;
     }
@@ -449,6 +558,18 @@ console.log('\n【9】README 自述统计');
       const actual = match(glob);
       if (actual === null) continue;
       claims.push([`git ls-files ${(glob || '').trim()} 条数`, num(n), actual]);
+    }
+
+    // `wc -l < 某文件 # → N 行` —— 之前不在白名单里，所以
+    // troubleshooting.md 从 675 变成 679 之后，"675 行"这个数在三个
+    // 提交里都没人发现（【5】报 680，README 写 675，实际 679）。
+    const wcRe = /wc -l\s*<\s*([A-Za-z0-9_./-]+)\.?[^\n]*#\s*→\s*([\d,]+)\s*行/g;
+    for (const m of readme.matchAll(wcRe)) {
+      const rel = m[1].replace(/\/$/, '');
+      const p = join(ROOT, rel);
+      if (!existsSync(p)) continue;
+      const actual = readFileSync(p, 'utf8').split('\n').length - 1;
+      claims.push([`wc -l < ${rel}`, num(m[2]), actual]);
     }
   }
 

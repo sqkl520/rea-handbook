@@ -105,7 +105,7 @@ npx -y rea-agents <命令>          # 或：不装，每次一次性运行
 | 第一次装，不知道先跑哪条命令 | [docs/01-getting-started.md §1](docs/01-getting-started.md#1-rea-是什么) | `wc -l < docs/01-getting-started.md` → 719 |
 | 要把 REA 接进你的 AI agent | [docs/02-agent-integration.md §一条命令](docs/02-agent-integration.md#一条命令搞定推荐) | — |
 | 手上有个目标，不知道该用哪个命令 | [guides/by-target-type.md §速查表](guides/by-target-type.md#目标类型速查) | 11 类目标，其中 6 类零依赖 |
-| 命令报错了，或结果看不懂 | [guides/troubleshooting.md §症状](guides/troubleshooting.md#症状error-cannot-create-a-string-longer-than-0x1fffffe8-characters) | 14 种症状，675 行 |
+| 命令报错了，或结果看不懂 | [guides/troubleshooting.md §症状](guides/troubleshooting.md#症状error-cannot-create-a-string-longer-than-0x1fffffe8-characters) | 14 种症状，679 行 |
 | 想看真实产出长什么样 | [case-studies/README.md §案例一](case-studies/README.md#案例一pcl2--从-il-里读出一个启动器的完整架构) | 3 个案例，5.5 / 146 / 567 MB |
 | 想让 AI 替你做分析 | [prompts/README.md §怎么用](prompts/README.md#怎么用) | 2 份模板 |
 | REA 覆盖不到的角度，要自己写解析 | [tools/README.md §脚本清单](tools/README.md#脚本清单) | 14 个脚本，1,146 行 |
@@ -117,7 +117,7 @@ npx -y rea-agents <命令>          # 或：不装，每次一次性运行
 ```bash
 grep -E '^\| [0-9]+ \|' guides/by-target-type.md | wc -l          # → 11 类目标
 grep -E '^\| [0-9]+ \|' guides/by-target-type.md | grep -c 零依赖  # → 其中 6 类
-wc -l < guides/troubleshooting.md                                  # → 675 行
+wc -l < guides/troubleshooting.md                                  # → 679 行
 git ls-files 'tools/*.cjs' | xargs wc -l | tail -1                  # → 1146 行 / 14 个脚本
 ```
 
